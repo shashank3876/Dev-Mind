@@ -32,6 +32,8 @@ flowchart LR
     WRK[Python Worker]
   end
 
+  
+  
   UI -->|POST /chat SSE| API
   API --> RAG
   API --> MEM
