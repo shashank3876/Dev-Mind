@@ -11,7 +11,7 @@ load_dotenv()
 from services.memory import init_db
 from services.llm.router import get_provider
 from services import github as gh_service
-from services.memory import init_db
+from services.review_prompt import MAX_OUTPUT_TOKENS, REVIEW_SYSTEM, build_review_messages
 
 MAX_ATTEMPTS = 3
 BACKOFF_SECONDS = 2
@@ -42,19 +42,13 @@ async def process_job(job: dict):
     print(f"[worker] reviewing PR #{pr_number} in {repo}")
 
     diff = await with_retries("fetch_diff", lambda: gh_service.fetch_diff(diff_url))
-    truncated = diff[:12000]
-
-    messages = [
-        {
-            "role": "user",
-            "content": f"Please review this PR diff and provide actionable feedback:\n\n```diff\n{truncated}\n```",
-        },
-    ]
+    messages = build_review_messages(diff)
     review = await with_retries(
         "llm_review",
         lambda: get_provider(os.environ.get("DEFAULT_LLM_PROVIDER", "claude")).one_shot(
             messages,
-            system="You are DevMind, an expert AI code reviewer. Be concise and specific.",
+            system=REVIEW_SYSTEM,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
         ),
     )
 

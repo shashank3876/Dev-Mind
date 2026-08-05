@@ -28,11 +28,12 @@ class OpenAIProvider(LLMProvider):
         self,
         messages: list[dict],
         system: str = "",
+        max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         stream = await self._client.chat.completions.create(
             model=self._model,
             messages=self._to_messages(messages, system),
-            max_tokens=2048,
+            max_tokens=max_output_tokens,
             stream=True,
         )
         async for chunk in stream:
@@ -40,11 +41,17 @@ class OpenAIProvider(LLMProvider):
             if delta:
                 yield delta
 
-    async def one_shot(self, messages: list[dict], system: str = "") -> str:
+    async def one_shot(
+        self,
+        messages: list[dict],
+        system: str = "",
+        max_output_tokens: int = 4096,
+    ) -> str:
         resp = await self._client.chat.completions.create(
             model=self._model,
             messages=self._to_messages(messages, system or "You are DevMind, an expert AI code reviewer."),
-            max_tokens=4096,
+            max_tokens=max_output_tokens,
+            temperature=0.2,
         )
         return resp.choices[0].message.content or ""
 

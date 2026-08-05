@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 

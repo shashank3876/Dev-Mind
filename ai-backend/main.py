@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from services.memory import init_db
-from routes import chat, health, ingest
+from routes import chat, health, ingest, review
 
 app = FastAPI(title="DevMind AI Backend")
 
@@ -26,3 +26,4 @@ async def startup():
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(ingest.router)
+app.include_router(review.router)

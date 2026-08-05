@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ClearChatRequest
 from services import memory, rag
 from services.llm import DEFAULT_PROVIDER, get_provider, list_providers
+from services.sse import format_sse
 
 router = APIRouter()
 
@@ -39,15 +40,14 @@ async def chat(req: ChatRequest):
     context_count = len(rag_results)
 
     async def event_stream():
-        
         if context_count:
-            yield f"data: [CONTEXT:{context_count}]\n\n"
+            yield format_sse(f"[CONTEXT:{context_count}]")
         full_reply = []
         async for token in llm.stream_response(history, system=system):
             full_reply.append(token)
-            yield f"data: {token}\n\n"
+            yield format_sse(token)
         memory.save_message(req.user_id, "assistant", "".join(full_reply))
-        yield "data: [DONE]\n\n"
+        yield format_sse("[DONE]")
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

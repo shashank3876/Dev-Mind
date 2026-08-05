@@ -36,3 +36,14 @@ class IngestResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class ReviewRequest(BaseModel):
+    pr_url: str
+    provider: Optional[LLMProviderName] = None
+
+
+class ReviewResponse(BaseModel):
+    review: str
+    repo: str
+    pr_number: int

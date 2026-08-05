@@ -26,6 +26,9 @@ if (!basePath) {
   );
 }
 
+const apiProxyTarget =
+  process.env.VITE_API_PROXY_TARGET ?? "http://localhost:3001";
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -65,6 +68,12 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
     },
   },
   preview: {
