@@ -23,20 +23,26 @@ class ClaudeProvider(LLMProvider):
         self,
         messages: list[dict],
         system: str = "",
+        max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         async with self._client.messages.stream(
             model=self._model,
-            max_tokens=2048,
+            max_tokens=max_output_tokens,
             system=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
             messages=messages,
         ) as stream:
             async for text in stream.text_stream:
                 yield text
 
-    async def one_shot(self, messages: list[dict], system: str = "") -> str:
+    async def one_shot(
+        self,
+        messages: list[dict],
+        system: str = "",
+        max_output_tokens: int = 4096,
+    ) -> str:
         resp = await self._client.messages.create(
             model=self._model,
-            max_tokens=4096,
+            max_tokens=max_output_tokens,
             system=system or "You are DevMind, an expert AI code reviewer.",
             messages=messages,
         )

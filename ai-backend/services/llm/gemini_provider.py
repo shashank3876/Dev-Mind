@@ -33,10 +33,12 @@ class GeminiProvider(LLMProvider):
         self,
         messages: list[dict],
         system: str = "",
+        max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         config = types.GenerateContentConfig(
             system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
-            max_output_tokens=2048,
+            max_output_tokens=max_output_tokens,
+            temperature=0.2,
         )
         stream = await self._client.aio.models.generate_content_stream(
             model=self._model,
@@ -47,10 +49,16 @@ class GeminiProvider(LLMProvider):
             if chunk.text:
                 yield chunk.text
 
-    async def one_shot(self, messages: list[dict], system: str = "") -> str:
+    async def one_shot(
+        self,
+        messages: list[dict],
+        system: str = "",
+        max_output_tokens: int = 4096,
+    ) -> str:
         config = types.GenerateContentConfig(
             system_instruction=system or "You are DevMind, an expert AI code reviewer.",
-            max_output_tokens=4096,
+            max_output_tokens=max_output_tokens,
+            temperature=0.2,
         )
         resp = await self._client.aio.models.generate_content(
             model=self._model,

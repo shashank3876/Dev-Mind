@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { readSseStream } from "@/lib/sse";
 
 export interface Message {
   id: string;
@@ -27,35 +28,34 @@ export function useChat() {
         body: JSON.stringify({ message: content, user_id: "user-1" }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
+      }
+
       if (!response.body) throw new Error("No response body");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      
       let fullAssistantContent = "";
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const token = line.slice(6);
-              // Handle escaped newlines or literal tokens as needed, assume plain text tokens
-              fullAssistantContent += token.replace(/\\n/g, '\n');
-              setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: fullAssistantContent } : m));
-            }
-          }
-        }
+      for await (const token of readSseStream(response.body)) {
+        if (token === "[DONE]") continue;
+        if (token.startsWith("[CONTEXT:") || token.startsWith("[PROVIDER:")) continue;
+        fullAssistantContent += token;
+        setMessages(prev =>
+          prev.map(m => (m.id === assistantMsgId ? { ...m, content: fullAssistantContent } : m)),
+        );
       }
-      
-      setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, isStreaming: false } : m));
+
+      setMessages(prev =>
+        prev.map(m => (m.id === assistantMsgId ? { ...m, isStreaming: false } : m)),
+      );
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, isStreaming: false, content: m.content + "\n\n[Error: Connection failed]" } : m));
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMsgId
+            ? { ...m, isStreaming: false, content: m.content + "\n\n[Error: Connection failed]" }
+            : m,
+        ),
+      );
     } finally {
       setIsLoading(false);
     }

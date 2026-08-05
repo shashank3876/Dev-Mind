@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Link } from "wouter";
 import { Send, Terminal, Moon, Sun, Loader2 } from "lucide-react";
+import { AuthControls } from "@/components/auth-controls";
 
 export default function Home() {
   const { messages, sendMessage, isLoading } = useChat();
@@ -47,7 +49,13 @@ export default function Home() {
           <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-mono font-medium tracking-wider uppercase ml-2 border border-border/50">Beta</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
+          <Link href="/review">
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              Review a PR
+            </Button>
+          </Link>
+          <AuthControls />
+          <Button
             variant="ghost" 
             size="icon" 
             className="text-muted-foreground hover:text-foreground h-9 w-9 rounded-full"

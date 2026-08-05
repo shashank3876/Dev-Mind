@@ -5,9 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
 
 export interface AuthUser {
   id: string;
@@ -15,12 +12,3 @@ export interface AuthUser {
   name: string | null;
   avatarUrl: string | null;
 }
-
-export interface AuthMeResponse {
-  user: AuthUser | null;
-}
-
-export interface AuthLogoutResponse {
-  success: boolean;
-}
-
