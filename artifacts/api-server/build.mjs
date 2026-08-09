@@ -31,6 +31,7 @@ async function buildAll() {
       "*.node",
       "connect-pg-simple",
       "express-session",
+      "razorpay",
       "sharp",
       "better-sqlite3",
       "sqlite3",
