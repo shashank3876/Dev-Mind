@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { configureSession } from "./lib/session";
+import { razorpayWebhookHandler } from "./routes/billing-webhook";
 
 const app: Express = express();
 
@@ -34,6 +35,11 @@ app.use(
   }),
 );
 app.use(cookieParser());
+app.use(
+  "/api/billing/razorpay/webhook",
+  express.raw({ type: "application/json" }),
+  razorpayWebhookHandler,
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 configureSession(app);
