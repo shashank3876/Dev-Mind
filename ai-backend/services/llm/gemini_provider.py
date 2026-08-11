@@ -36,10 +36,9 @@ class GeminiProvider(LLMProvider):
         max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         config = types.GenerateContentConfig(
-            system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
-            max_output_tokens=max_output_tokens,
-            temperature=0.2,
-        )
+    system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
+    max_output_tokens=max_output_tokens,
+)
         stream = await self._client.aio.models.generate_content_stream(
             model=self._model,
             contents=self._to_contents(messages),

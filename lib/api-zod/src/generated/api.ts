@@ -40,3 +40,53 @@ export const AuthLogoutResponse = zod.object({
 })
 
 
+/**
+ * Returns monthly chat usage for the authenticated user
+ * @summary Get chat usage
+ */
+export const GetChatUsageResponse = zod.object({
+  "used": zod.number(),
+  "limit": zod.number(),
+  "remaining": zod.number(),
+  "canSend": zod.boolean(),
+  "resetsAt": zod.string(),
+  "isSubscribed": zod.boolean()
+})
+
+
+/**
+ * Sends a chat message via the authenticated proxy
+ * @summary Send chat message
+ */
+export const SendChatMessageBody = zod.object({
+  "message": zod.string(),
+  "provider": zod.string().nullish()
+})
+
+
+/**
+ * @summary Create Razorpay checkout
+ */
+export const CreateRazorpayCheckoutResponse = zod.object({
+  "orderId": zod.string(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "keyId": zod.string(),
+  "userEmail": zod.string()
+})
+
+
+/**
+ * @summary Verify Razorpay payment
+ */
+export const VerifyRazorpayPaymentBody = zod.object({
+  "orderId": zod.string(),
+  "paymentId": zod.string(),
+  "signature": zod.string()
+})
+
+export const VerifyRazorpayPaymentResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
