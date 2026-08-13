@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Send, Terminal, Moon, Sun, Loader2 } from "lucide-react";
+import { Send, Terminal, Moon, Sun, Loader2, Sparkles, Code2, Regex, Database } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
 import { UpgradeButton } from "@/components/upgrade-button";
 import { useToast } from "@/hooks/use-toast";
@@ -75,12 +75,12 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
-      <header className="flex-none flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+      <header className="flex-none flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
+          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.5)]">
             <Terminal className="w-4 h-4" />
           </div>
-          <h1 className="font-semibold tracking-tight text-lg">DevMind</h1>
+          <h1 className="font-semibold tracking-tight text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">DevMind</h1>
           <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-mono font-medium tracking-wider uppercase ml-2 border border-border/50">
             Beta
           </span>
@@ -129,30 +129,32 @@ export default function Home() {
         <div className="max-w-3xl mx-auto py-8 flex flex-col gap-6 md:gap-8 min-h-full">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500 mt-20">
-              <div className="w-16 h-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-6 ring-1 ring-border/50 shadow-sm">
-                <Terminal className="w-8 h-8 text-primary" />
+              <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-6">
+                <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+                <div className="relative w-16 h-16 rounded-2xl bg-secondary/60 flex items-center justify-center ring-1 ring-primary/30">
+                  <Terminal className="w-8 h-8 text-primary" />
+                </div>
               </div>
               <h2 className="text-2xl font-semibold mb-2">How can I help you build?</h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                Paste your code, ask for architectural advice, or debug a tricky error. DevMind is ready.
+              <p className="text-muted-foreground max-w-md mx-auto text-sm">
+                Paste your code, ask for architectural advice, or debug a tricky error.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-12 w-full max-w-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-10 w-full max-w-lg">
                 {[
-                  "Review my React component for performance issues",
-                  "Explain how React Server Components work",
-                  "Write a regex to match valid email addresses",
-                  "Optimize my Drizzle database query",
-                ].map((prompt, i) => (
+                  { text: "Review my React component for performance issues", icon: Sparkles },
+                  { text: "Explain how React Server Components work", icon: Code2 },
+                  { text: "Write a regex to match valid email addresses", icon: Regex },
+                  { text: "Optimize my Drizzle database query", icon: Database },
+                ].map(({ text, icon: Icon }, i) => (
                   <button
                     key={i}
-                    onClick={() => {
-                      if (canSend) setInput(prompt);
-                    }}
+                    onClick={() => { if (canSend) setInput(text); }}
                     disabled={!canSend}
-                    className="text-left px-4 py-3 rounded-lg border border-border/50 bg-secondary/20 hover:bg-secondary/60 hover:border-primary/30 transition-all text-sm text-muted-foreground hover:text-foreground active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group text-left px-4 py-3 rounded-xl border border-border/50 bg-secondary/20 hover:bg-secondary/50 hover:border-primary/40 hover:shadow-sm transition-all duration-200 text-sm text-muted-foreground hover:text-foreground active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-start gap-3"
                   >
-                    {prompt}
+                    <Icon className="w-4 h-4 mt-0.5 shrink-0 text-primary/60 group-hover:text-primary transition-colors" />
+                    <span>{text}</span>
                   </button>
                 ))}
               </div>
@@ -181,8 +183,8 @@ export default function Home() {
                   <div
                     className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
-                        : "bg-secondary/40 border border-border/50 text-foreground rounded-tl-sm whitespace-pre-wrap font-mono text-[13px]"
+                        ? "bg-primary text-primary-foreground rounded-tr-sm shadow-[0_2px_12px_hsl(var(--primary)/0.25)]"
+                        : "bg-card border border-border/60 text-foreground rounded-tl-sm whitespace-pre-wrap font-mono text-[13px] shadow-sm"
                     }`}
                   >
                     {msg.content}
@@ -209,7 +211,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto relative">
           <form
             onSubmit={handleSubmit}
-            className="relative flex items-end gap-2 bg-card rounded-xl border border-border/50 shadow-sm ring-1 ring-black/5 dark:ring-white/5 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all duration-200"
+            className="relative flex items-end gap-2 bg-card/80 backdrop-blur-sm rounded-2xl border border-border/60 shadow-md ring-1 ring-black/5 dark:ring-white/5 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 focus-within:shadow-[0_0_20px_hsl(var(--primary)/0.1)] transition-all duration-200"
           >
             <Textarea
               value={input}

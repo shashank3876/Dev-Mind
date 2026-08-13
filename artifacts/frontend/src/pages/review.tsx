@@ -21,10 +21,10 @@ export default function ReviewPage() {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background text-foreground font-sans">
-      <header className="flex-none flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/95 backdrop-blur z-10">
+      <header className="flex-none flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
+            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.5)]">
               <Terminal className="w-4 h-4" />
             </div>
             <h1 className="font-semibold tracking-tight text-lg">DevMind</h1>
@@ -55,8 +55,11 @@ export default function ReviewPage() {
         <div className="max-w-3xl mx-auto py-8 px-4 md:px-0 flex flex-col gap-6">
           {!review && !error && !isLoading && (
             <div className="flex flex-col items-center text-center mt-12 animate-in fade-in duration-500">
-              <div className="w-16 h-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-6 ring-1 ring-border/50">
-                <GitPullRequest className="w-8 h-8 text-primary" />
+              <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-6">
+                <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+                <div className="relative w-16 h-16 rounded-2xl bg-secondary/60 flex items-center justify-center ring-1 ring-primary/30">
+                  <GitPullRequest className="w-8 h-8 text-primary" />
+                </div>
               </div>
               <h2 className="text-2xl font-semibold mb-2">Review a public PR</h2>
               <p className="text-muted-foreground max-w-md">
@@ -78,7 +81,7 @@ export default function ReviewPage() {
           )}
 
           {review && (
-            <div className="rounded-2xl border border-border/50 bg-secondary/40 px-5 py-5 text-sm leading-relaxed whitespace-pre-wrap text-[14px]">
+            <div className="rounded-2xl border border-border/60 bg-card shadow-sm px-5 py-5 text-sm leading-relaxed whitespace-pre-wrap text-[14px] font-mono">
               {review}
               {isStreaming && (
                 <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-primary animate-pulse" />
@@ -94,7 +97,7 @@ export default function ReviewPage() {
             value={prUrl}
             onChange={(e) => setPrUrl(e.target.value)}
             placeholder="https://github.com/owner/repo/pull/123"
-            className="font-mono text-sm"
+            className="font-mono text-sm rounded-xl focus-visible:ring-primary/40 focus-visible:shadow-[0_0_16px_hsl(var(--primary)/0.1)]"
             disabled={isLoading}
           />
           <Button type="submit" disabled={!prUrl.trim() || isLoading} className="shrink-0">
