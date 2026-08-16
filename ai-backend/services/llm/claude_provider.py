@@ -5,6 +5,7 @@ from typing import AsyncGenerator, Optional
 import anthropic
 
 from services.llm.base import LLMProvider
+from services.secrets import get_secret
 
 DEFAULT_MODEL = "claude-sonnet-4-5"
 
@@ -13,7 +14,7 @@ class ClaudeProvider(LLMProvider):
     name = "claude"
 
     def __init__(self) -> None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        api_key = get_secret("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is not set")
         self._client = anthropic.AsyncAnthropic(api_key=api_key)

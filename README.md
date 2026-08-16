@@ -127,7 +127,7 @@ cp .env.example .env
 | `ANTHROPIC_API_KEY` | Anthropic API key (for Claude) |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `GEMINI_API_KEY` | Google Gemini API key |
-| `DEFAULT_LLM_PROVIDER` | Default provider: `claude`, `gemini`, or `openai` |
+| `DEFAULT_LLM_PROVIDER` | Default provider: `claude`, `gemini`, `openai`, or `vertex` |
 | `REDIS_URL` | Redis URL (e.g. `redis://localhost:6379`) |
 | `QDRANT_URL` | Qdrant server URL (e.g. `http://localhost:6333`) |
 | `QDRANT_API_KEY` | Qdrant API key (optional for local dev) |
@@ -135,6 +135,37 @@ cp .env.example .env
 | `PORT` | AI backend port (default `8001`) |
 
 **Frontend** — set `VITE_API_URL` to point at the AI backend (e.g. `http://localhost:8001`).
+
+### GCP / Vertex AI (optional)
+
+For production on Google Cloud, run the one-time setup script:
+
+```bash
+chmod +x scripts/gcp/setup-project.sh
+./scripts/gcp/setup-project.sh <your-gcp-project-id>
+```
+
+Then configure these in `.env`:
+
+| Variable | Description |
+|---|---|
+| `GCP_PROJECT_ID` | GCP project ID |
+| `GCP_REGION` | Vertex AI region (default `us-central1`) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON path (local dev only) |
+| `DEFAULT_LLM_PROVIDER` | Set to `vertex` for Vertex AI Gemini |
+| `VERTEX_MODEL` | Vertex model ID (default `gemini-2.0-flash-001`) |
+| `EMBEDDING_PROVIDER` | `local` (default) or `vertex` |
+| `VECTOR_STORE` | `qdrant` (default) or `vertex` |
+| `USE_GCP_SECRETS` | `true` to load API keys from Secret Manager |
+| `USE_GCP_LOGGING` | `true` for structured JSON logs to Cloud Logging |
+
+Deploy to Cloud Run:
+
+```bash
+gcloud builds submit --config ai-backend/cloudbuild.yaml
+```
+
+For Vertex AI Vector Search, run `./scripts/gcp/setup-vector-index.sh <project-id>` and set `VECTOR_STORE=vertex`, `EMBEDDING_PROVIDER=vertex`, `VERTEX_INDEX_ENDPOINT`, and `VERTEX_DEPLOYED_INDEX_ID`.
 
 ### 3. Start infrastructure
 
@@ -234,7 +265,7 @@ The TypeScript packages under `lib/` are generated and shared across artifacts:
 | Layer | Technologies |
 |---|---|
 | Gateway | Go, chi, Redis |
-| AI Backend | Python, FastAPI, Anthropic/OpenAI/Gemini SDKs, Qdrant, sentence-transformers |
+| AI Backend | Python, FastAPI, Anthropic/OpenAI/Gemini/Vertex SDKs, Qdrant, sentence-transformers |
 | Frontend | React 19, Vite, Tailwind CSS, Radix UI |
 | API Server | Express 5, Drizzle ORM, Pino |
 | Tooling | pnpm workspaces, TypeScript, esbuild |

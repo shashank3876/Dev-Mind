@@ -1,4 +1,6 @@
 # /chat route — accepts a message + user_id + provider, streams LLM response via SSE.
+import logging
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ClearChatRequest
@@ -7,6 +9,7 @@ from services.llm import DEFAULT_PROVIDER, get_provider, list_providers
 from services.sse import format_sse
 
 router = APIRouter()
+logger = logging.getLogger("devmind-api")
 
 BASE_SYSTEM = "You are DevMind, an expert AI code reviewer and developer assistant."
 
@@ -29,7 +32,7 @@ async def chat(req: ChatRequest):
     try:
         rag_results = await rag.search(req.message)
     except Exception as e:
-        print(f"[chat] RAG search failed, continuing without context: {e}")
+        logger.warning("RAG search failed, continuing without context: %s", e)
 
     if rag_results:
         context = "\n---\n".join(rag_results)

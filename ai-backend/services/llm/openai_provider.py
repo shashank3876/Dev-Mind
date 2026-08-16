@@ -5,6 +5,7 @@ from typing import AsyncGenerator, Optional
 from openai import AsyncOpenAI
 
 from services.llm.base import LLMProvider
+from services.secrets import get_secret
 
 DEFAULT_MODEL = "gpt-4o-mini"
 
@@ -13,7 +14,7 @@ class OpenAIProvider(LLMProvider):
     name = "openai"
 
     def __init__(self) -> None:
-        api_key = os.environ.get("OPENAI_API_KEY")
+        api_key = get_secret("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set")
         self._client = AsyncOpenAI(api_key=api_key)

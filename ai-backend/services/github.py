@@ -1,7 +1,8 @@
 # GitHub API helpers: fetch PR diffs and post inline review comments.
-import os
 import re
 import httpx
+
+from services.secrets import get_secret
 
 GITHUB_API = "https://api.github.com"
 
@@ -14,7 +15,7 @@ PR_URL_PATTERN = re.compile(
 def _headers(*, include_auth: bool = True) -> dict[str, str]:
     headers = {"Accept": "application/vnd.github.v3.diff"}
     if include_auth:
-        token = os.environ.get("GITHUB_TOKEN", "")
+        token = get_secret("GITHUB_TOKEN", "")
         if token:
             headers["Authorization"] = f"Bearer {token}"
             headers["X-GitHub-Api-Version"] = "2022-11-28"
@@ -53,7 +54,7 @@ async def fetch_diff(diff_url: str) -> str:
 
 
 async def post_review_comment(repo: str, pr_number: int, body: str):
-    token = os.environ.get("GITHUB_TOKEN", "")
+    token = get_secret("GITHUB_TOKEN", "")
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",

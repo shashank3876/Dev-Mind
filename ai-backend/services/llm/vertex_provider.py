@@ -1,4 +1,4 @@
-# Google Gemini LLM provider.
+# Vertex AI Gemini LLM provider (uses ADC / Workload Identity, no API key).
 import os
 from typing import AsyncGenerator, Optional
 
@@ -6,20 +6,20 @@ from google import genai
 from google.genai import types
 
 from services.llm.base import LLMProvider
-from services.secrets import get_secret
 
-DEFAULT_MODEL = "gemini-3.6-flash"
+DEFAULT_MODEL = "gemini-2.0-flash-001"
 
 
-class GeminiProvider(LLMProvider):
-    name = "gemini"
+class VertexProvider(LLMProvider):
+    name = "vertex"
 
     def __init__(self) -> None:
-        api_key = get_secret("GEMINI_API_KEY") or get_secret("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set")
-        self._client = genai.Client(api_key=api_key)
-        self._model = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
+        project = os.environ.get("GCP_PROJECT_ID")
+        if not project:
+            raise ValueError("GCP_PROJECT_ID is not set")
+        location = os.environ.get("GCP_REGION", "us-central1")
+        self._client = genai.Client(vertexai=True, project=project, location=location)
+        self._model = os.environ.get("VERTEX_MODEL", DEFAULT_MODEL)
 
     def _to_contents(self, messages: list[dict]) -> list[types.Content]:
         contents: list[types.Content] = []
@@ -37,9 +37,10 @@ class GeminiProvider(LLMProvider):
         max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         config = types.GenerateContentConfig(
-    system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
-    max_output_tokens=max_output_tokens,
-)
+            system_instruction=system
+            or "You are DevMind, an expert AI code reviewer and developer assistant.",
+            max_output_tokens=max_output_tokens,
+        )
         stream = await self._client.aio.models.generate_content_stream(
             model=self._model,
             contents=self._to_contents(messages),
@@ -68,11 +69,11 @@ class GeminiProvider(LLMProvider):
         return resp.text or ""
 
 
-_client: Optional[GeminiProvider] = None
+_client: Optional[VertexProvider] = None
 
 
-def get_gemini_provider() -> GeminiProvider:
+def get_vertex_provider() -> VertexProvider:
     global _client
     if _client is None:
-        _client = GeminiProvider()
+        _client = VertexProvider()
     return _client

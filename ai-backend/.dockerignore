@@ -1,11 +1,7 @@
-node_modules/
 .venv/
 __pycache__/
 *.pyc
 .env
-dist/
-*.tsbuildinfo
-dump.rdb
 memory.db
 vector_payloads.db
-.local/
+.pytest_cache/
