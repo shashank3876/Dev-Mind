@@ -7,4 +7,5 @@ dist/
 *.tsbuildinfo
 dump.rdb
 memory.db
+vector_payloads.db
 .local/

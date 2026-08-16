@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+memory.db
+vector_payloads.db
+.pytest_cache/

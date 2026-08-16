@@ -24,3 +24,42 @@ export interface AuthLogoutResponse {
   success: boolean;
 }
 
+export interface ChatUsageResponse {
+  used: number;
+  limit: number;
+  remaining: number;
+  canSend: boolean;
+  resetsAt: string;
+  isSubscribed: boolean;
+}
+
+export interface ChatMessageRequest {
+  message: string;
+  provider?: string | null;
+}
+
+export interface QuotaExceededResponse {
+  code: string;
+  used: number;
+  limit: number;
+  resetsAt: string;
+}
+
+export interface RazorpayCheckoutResponse {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  userEmail: string;
+}
+
+export interface RazorpayVerifyRequest {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}
+
+export interface RazorpayVerifyResponse {
+  success: boolean;
+}
+

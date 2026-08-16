@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 
 from services.llm.base import LLMProvider
+from services.secrets import get_secret
 
 DEFAULT_MODEL = "gemini-3.6-flash"
 
@@ -14,7 +15,7 @@ class GeminiProvider(LLMProvider):
     name = "gemini"
 
     def __init__(self) -> None:
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        api_key = get_secret("GEMINI_API_KEY") or get_secret("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set")
         self._client = genai.Client(api_key=api_key)
@@ -36,10 +37,9 @@ class GeminiProvider(LLMProvider):
         max_output_tokens: int = 2048,
     ) -> AsyncGenerator[str, None]:
         config = types.GenerateContentConfig(
-            system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
-            max_output_tokens=max_output_tokens,
-            temperature=0.2,
-        )
+    system_instruction=system or "You are DevMind, an expert AI code reviewer and developer assistant.",
+    max_output_tokens=max_output_tokens,
+)
         stream = await self._client.aio.models.generate_content_stream(
             model=self._model,
             contents=self._to_contents(messages),

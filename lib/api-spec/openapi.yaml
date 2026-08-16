@@ -12,6 +12,10 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication operations
+  - name: chat
+    description: Chat operations
+  - name: billing
+    description: Billing operations
 paths:
   /healthz:
     get:
@@ -52,6 +56,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthLogoutResponse"
+  /chat/usage:
+    get:
+      operationId: getChatUsage
+      tags: [chat]
+      summary: Get chat usage
+      description: Returns monthly chat usage for the authenticated user
+      responses:
+        "200":
+          description: Usage summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatUsageResponse"
+        "401":
+          description: Not authenticated
+  /chat:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send chat message
+      description: Sends a chat message via the authenticated proxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageRequest"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "402":
+          description: Quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaExceededResponse"
+  /billing/razorpay/checkout:
+    post:
+      operationId: createRazorpayCheckout
+      tags: [billing]
+      summary: Create Razorpay checkout
+      responses:
+        "200":
+          description: Checkout details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RazorpayCheckoutResponse"
+        "401":
+          description: Not authenticated
+  /billing/razorpay/verify:
+    post:
+      operationId: verifyRazorpayPayment
+      tags: [billing]
+      summary: Verify Razorpay payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RazorpayVerifyRequest"
+      responses:
+        "200":
+          description: Payment verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RazorpayVerifyResponse"
+        "401":
+          description: Not authenticated
 components:
   schemas:
     HealthStatus:
@@ -95,4 +175,90 @@ components:
           type: boolean
       required:
         - success
-
+    ChatUsageResponse:
+      type: object
+      properties:
+        used:
+          type: integer
+        limit:
+          type: integer
+        remaining:
+          type: integer
+        canSend:
+          type: boolean
+        resetsAt:
+          type: string
+        isSubscribed:
+          type: boolean
+      required:
+        - used
+        - limit
+        - remaining
+        - canSend
+        - resetsAt
+        - isSubscribed
+    ChatMessageRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        provider:
+          type: string
+          nullable: true
+      required:
+        - message
+    QuotaExceededResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        used:
+          type: integer
+        limit:
+          type: integer
+        resetsAt:
+          type: string
+      required:
+        - code
+        - used
+        - limit
+        - resetsAt
+    RazorpayCheckoutResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+        amount:
+          type: integer
+        currency:
+          type: string
+        keyId:
+          type: string
+        userEmail:
+          type: string
+      required:
+        - orderId
+        - amount
+        - currency
+        - keyId
+        - userEmail
+    RazorpayVerifyRequest:
+      type: object
+      properties:
+        orderId:
+          type: string
+        paymentId:
+          type: string
+        signature:
+          type: string
+      required:
+        - orderId
+        - paymentId
+        - signature
+    RazorpayVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success

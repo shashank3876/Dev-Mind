@@ -22,11 +22,17 @@ import type {
 import type {
   AuthLogoutResponse,
   AuthMeResponse,
-  HealthStatus
+  ChatMessageRequest,
+  ChatUsageResponse,
+  HealthStatus,
+  QuotaExceededResponse,
+  RazorpayCheckoutResponse,
+  RazorpayVerifyRequest,
+  RazorpayVerifyResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -262,5 +268,296 @@ export const useAuthLogout = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAuthLogoutMutationOptions(options));
+    }
+
+export const getGetChatUsageUrl = () => {
+
+
+
+
+  return `/api/chat/usage`
+}
+
+/**
+ * Returns monthly chat usage for the authenticated user
+ * @summary Get chat usage
+ */
+export const getChatUsage = async ( options?: RequestInit): Promise<ChatUsageResponse> => {
+
+  return customFetch<ChatUsageResponse>(getGetChatUsageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChatUsageQueryKey = () => {
+    return [
+    `/api/chat/usage`
+    ] as const;
+    }
+
+
+export const getGetChatUsageQueryOptions = <TData = Awaited<ReturnType<typeof getChatUsage>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChatUsageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChatUsage>>> = ({ signal }) => getChatUsage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChatUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChatUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getChatUsage>>>
+export type GetChatUsageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get chat usage
+ */
+
+export function useGetChatUsage<TData = Awaited<ReturnType<typeof getChatUsage>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChatUsageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSendChatMessageUrl = () => {
+
+
+
+
+  return `/api/chat`
+}
+
+/**
+ * Sends a chat message via the authenticated proxy
+ * @summary Send chat message
+ */
+export const sendChatMessage = async (chatMessageRequest: ChatMessageRequest, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getSendChatMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      chatMessageRequest,)
+  }
+);}
+
+
+
+
+export const getSendChatMessageMutationOptions = <TError = ErrorType<void | QuotaExceededResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageRequest>}, TContext> => {
+
+const mutationKey = ['sendChatMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendChatMessage>>, {data: BodyType<ChatMessageRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendChatMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendChatMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendChatMessage>>>
+    export type SendChatMessageMutationBody = BodyType<ChatMessageRequest>
+    export type SendChatMessageMutationError = ErrorType<void | QuotaExceededResponse>
+
+    /**
+ * @summary Send chat message
+ */
+export const useSendChatMessage = <TError = ErrorType<void | QuotaExceededResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendChatMessage>>,
+        TError,
+        {data: BodyType<ChatMessageRequest>},
+        TContext
+      > => {
+      return useMutation(getSendChatMessageMutationOptions(options));
+    }
+
+export const getCreateRazorpayCheckoutUrl = () => {
+
+
+
+
+  return `/api/billing/razorpay/checkout`
+}
+
+/**
+ * @summary Create Razorpay checkout
+ */
+export const createRazorpayCheckout = async ( options?: RequestInit): Promise<RazorpayCheckoutResponse> => {
+
+  return customFetch<RazorpayCheckoutResponse>(getCreateRazorpayCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateRazorpayCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRazorpayCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRazorpayCheckout>>, TError,void, TContext> => {
+
+const mutationKey = ['createRazorpayCheckout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRazorpayCheckout>>, void> = () => {
+
+
+          return  createRazorpayCheckout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRazorpayCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createRazorpayCheckout>>>
+
+    export type CreateRazorpayCheckoutMutationError = ErrorType<void>
+
+    /**
+ * @summary Create Razorpay checkout
+ */
+export const useCreateRazorpayCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRazorpayCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRazorpayCheckout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateRazorpayCheckoutMutationOptions(options));
+    }
+
+export const getVerifyRazorpayPaymentUrl = () => {
+
+
+
+
+  return `/api/billing/razorpay/verify`
+}
+
+/**
+ * @summary Verify Razorpay payment
+ */
+export const verifyRazorpayPayment = async (razorpayVerifyRequest: RazorpayVerifyRequest, options?: RequestInit): Promise<RazorpayVerifyResponse> => {
+
+  return customFetch<RazorpayVerifyResponse>(getVerifyRazorpayPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      razorpayVerifyRequest,)
+  }
+);}
+
+
+
+
+export const getVerifyRazorpayPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyRazorpayPayment>>, TError,{data: BodyType<RazorpayVerifyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyRazorpayPayment>>, TError,{data: BodyType<RazorpayVerifyRequest>}, TContext> => {
+
+const mutationKey = ['verifyRazorpayPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyRazorpayPayment>>, {data: BodyType<RazorpayVerifyRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyRazorpayPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyRazorpayPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof verifyRazorpayPayment>>>
+    export type VerifyRazorpayPaymentMutationBody = BodyType<RazorpayVerifyRequest>
+    export type VerifyRazorpayPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Verify Razorpay payment
+ */
+export const useVerifyRazorpayPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyRazorpayPayment>>, TError,{data: BodyType<RazorpayVerifyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyRazorpayPayment>>,
+        TError,
+        {data: BodyType<RazorpayVerifyRequest>},
+        TContext
+      > => {
+      return useMutation(getVerifyRazorpayPaymentMutationOptions(options));
     }
 

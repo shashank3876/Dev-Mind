@@ -1,0 +1,66 @@
+# Cloud Build: build and deploy ai-backend + worker to Cloud Run.
+substitutions:
+  _REGION: us-central1
+  _SERVICE_ACCOUNT: devmind-ai@${PROJECT_ID}.iam.gserviceaccount.com
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${SHORT_SHA}
+      - -f
+      - ai-backend/Dockerfile
+      - ai-backend
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${SHORT_SHA}
+      - -f
+      - ai-backend/worker.Dockerfile
+      - ai-backend
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${SHORT_SHA}
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${SHORT_SHA}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - devmind-ai-backend
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --service-account=${_SERVICE_ACCOUNT}
+      - --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},USE_GCP_SECRETS=true,USE_GCP_LOGGING=true,USE_GCP_TRACING=true
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - devmind-ai-worker
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --no-allow-unauthenticated
+      - --service-account=${_SERVICE_ACCOUNT}
+      - --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},USE_GCP_SECRETS=true,USE_GCP_LOGGING=true,USE_GCP_TRACING=true
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${SHORT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${SHORT_SHA}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -8,6 +8,7 @@ class LLMProviderName(str, Enum):
     claude = "claude"
     gemini = "gemini"
     openai = "openai"
+    vertex = "vertex"
 
 
 class ChatRequest(BaseModel):

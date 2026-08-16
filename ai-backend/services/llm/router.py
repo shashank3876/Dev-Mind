@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from services.llm.base import LLMProvider
 
-_REGISTRY = ("claude", "gemini", "openai")
+_REGISTRY = ("claude", "gemini", "openai", "vertex")
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_LLM_PROVIDER", "claude")
 
 
@@ -26,6 +26,10 @@ def _load_provider(name: str) -> LLMProvider:
         from services.llm.openai_provider import get_openai_provider
 
         return get_openai_provider()
+    if name == "vertex":
+        from services.llm.vertex_provider import get_vertex_provider
+
+        return get_vertex_provider()
     raise HTTPException(
         status_code=400,
         detail=f"Unknown provider '{name}'. Supported: {', '.join(_REGISTRY)}",

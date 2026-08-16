@@ -1,35 +1,12 @@
-# RAG service: embeds text with sentence-transformers and stores/queries Qdrant.
-import os
-from typing import Optional
-from sentence_transformers import SentenceTransformer
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+# RAG service: embeds text and stores/queries vectors via pluggable providers.
 import uuid
+from typing import Optional
 
-COLLECTION = "devmind_docs"
-VECTOR_SIZE = 384
+from services.embeddings import get_embedding_provider
+from services.vectorstore import get_vector_store
+
 CHUNK_SIZE = 700
 CHUNK_OVERLAP = 100
-
-_model: Optional[SentenceTransformer] = None
-_client: Optional[AsyncQdrantClient] = None
-
-
-def get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
-
-
-def get_client() -> AsyncQdrantClient:
-    global _client
-    if _client is None:
-        _client = AsyncQdrantClient(
-            url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            api_key=os.environ.get("QDRANT_API_KEY") or None,
-        )
-    return _client
 
 
 def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
@@ -49,45 +26,31 @@ def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) 
     return chunks
 
 
-async def ensure_collection():
-    client = get_client()
-    existing = await client.get_collections()
-    names = [c.name for c in existing.collections]
-    if COLLECTION not in names:
-        await client.create_collection(
-            COLLECTION,
-            vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
-        )
-
-
 async def upsert(text: str, metadata: Optional[dict] = None) -> list[str]:
     """Embed and store text chunks; returns list of point IDs."""
-    model = get_model()
-    client = get_client()
-    await ensure_collection()
+    embedder = get_embedding_provider()
+    store = get_vector_store()
+    await store.ensure_collection(embedder.vector_size)
+
     chunks = chunk_text(text)
     ids: list[str] = []
-    points: list[PointStruct] = []
+    payloads: list[dict] = []
     for chunk in chunks:
         point_id = str(uuid.uuid4())
         ids.append(point_id)
-        vector = model.encode(chunk).tolist()
-        points.append(
-            PointStruct(
-                id=point_id,
-                vector=vector,
-                payload={"text": chunk, **(metadata or {})},
-            )
-        )
-    if points:
-        await client.upsert(COLLECTION, points=points)
+        payloads.append({"text": chunk, **(metadata or {})})
+
+    vectors = await embedder.embed(chunks)
+    await store.upsert(ids, vectors, payloads)
     return ids
 
 
 async def search(query: str, top_k: int = 5) -> list[str]:
-    model = get_model()
-    vector = model.encode(query).tolist()
-    client = get_client()
-    await ensure_collection()
-    results = await client.query_points(COLLECTION, query=vector, limit=top_k)
-    return [hit.payload.get("text", "") for hit in results.points if hit.payload]
+    embedder = get_embedding_provider()
+    store = get_vector_store()
+    await store.ensure_collection(embedder.vector_size)
+
+    vector = await embedder.embed_query(query)
+    if not vector:
+        return []
+    return await store.search(vector, top_k=top_k)
