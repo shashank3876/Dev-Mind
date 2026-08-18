@@ -1,0 +1,44 @@
+.git
+.gcloudignore
+
+# Python environments
+.venv/
+.venv-*/
+**/.venv/
+**/.venv-*/
+venv/
+env/
+
+# Node
+node_modules/
+**/node_modules/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build/cache
+dist/
+build/
+artifacts/**/dist/
+artifacts/**/.tsbuildinfo
+.local/
+*.log
+coverage/
+.coverage
+
+# OS
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+dump.rdb
+**/dump.rdb

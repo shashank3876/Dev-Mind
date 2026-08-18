@@ -1,5 +1,5 @@
-# Cloud Build: build and deploy gateway + ai-backend + Pub/Sub worker to Cloud Run.
-# Cost controls: scale-to-zero, low max instances, Flash model, no Redis/Memorystore.
+# Cheaper Cloud Build: gateway + PR worker only (skips the chat backend image).
+# Use this on a tight GCP budget. Full stack: ai-backend/cloudbuild.yaml
 substitutions:
   _REGION: us-central1
   _PUBSUB_TOPIC: devmind-pr-jobs
@@ -19,15 +19,6 @@ steps:
     args:
       - build
       - -t
-      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${BUILD_ID}
-      - -f
-      - ai-backend/Dockerfile
-      - ai-backend
-
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
       - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${BUILD_ID}
       - -f
       - ai-backend/worker.Dockerfile
@@ -37,11 +28,6 @@ steps:
     args:
       - push
       - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/gateway:${BUILD_ID}
-
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${BUILD_ID}
 
   - name: gcr.io/cloud-builders/docker
     args:
@@ -75,24 +61,6 @@ steps:
           --cpu-throttling \
           --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},QUEUE_BACKEND=pubsub,PUBSUB_TOPIC=${_PUBSUB_TOPIC} \
           "$${SECRET_FLAGS[@]}"
-
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - devmind-ai-backend
-      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${BUILD_ID}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --service-account=devmind-ai@${PROJECT_ID}.iam.gserviceaccount.com
-      - --cpu=1
-      - --memory=1Gi
-      - --min-instances=0
-      - --max-instances=2
-      - --cpu-throttling
-      - --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},USE_GCP_SECRETS=true,USE_GCP_LOGGING=true,USE_GCP_TRACING=true,DEFAULT_LLM_PROVIDER=vertex,VERTEX_MODEL=gemini-2.5-flash
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -190,7 +158,6 @@ steps:
 
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/gateway:${BUILD_ID}
-  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-backend:${BUILD_ID}
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/ai-worker:${BUILD_ID}
 
 options:

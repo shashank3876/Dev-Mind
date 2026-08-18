@@ -7,7 +7,7 @@ from google.genai import types
 
 from services.llm.base import LLMProvider
 
-DEFAULT_MODEL = "gemini-2.0-flash-001"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 class VertexProvider(LLMProvider):

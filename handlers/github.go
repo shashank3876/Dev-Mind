@@ -1,5 +1,5 @@
-// Handles incoming GitHub webhook events: parses pull_request and push events,
-// builds a Job struct, and enqueues it in Redis.
+// Handles incoming GitHub pull_request webhooks, builds a Job, and enqueues it
+// (Redis locally, Pub/Sub in production). Only opened/reopened/synchronize run a review.
 package handlers
 
 import (
@@ -11,8 +11,8 @@ import (
 )
 
 type githubPayload struct {
-	Action     string `json:"action"`
-	Number     int    `json:"number"`
+	Action      string `json:"action"`
+	Number      int    `json:"number"`
 	PullRequest *struct {
 		DiffURL string `json:"diff_url"`
 		Head    struct {
@@ -27,16 +27,11 @@ type githubPayload struct {
 	Repository struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
-	After  string `json:"after"`
-	Ref    string `json:"ref"`
-	Pusher struct {
-		Name string `json:"name"`
-	} `json:"pusher"`
 }
 
 func GitHubWebhook(w http.ResponseWriter, r *http.Request) {
 	event := r.Header.Get("X-GitHub-Event")
-	if event != "pull_request" && event != "push" {
+	if event != "pull_request" {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ignored")
 		return
@@ -54,15 +49,24 @@ func GitHubWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if event == "pull_request" && p.PullRequest != nil {
+		switch p.Action {
+		case "opened", "reopened", "synchronize":
+		default:
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "ignored")
+			return
+		}
 		job.PRNumber = p.Number
 		job.DiffURL = p.PullRequest.DiffURL
 		job.SHA = p.PullRequest.Head.SHA
 		job.Author = p.PullRequest.User.Login
 		job.Branch = p.PullRequest.Head.Ref
-	} else if event == "push" {
-		job.SHA = p.After
-		job.Author = p.Pusher.Name
-		job.Branch = p.Ref
+	}
+
+	if job.PRNumber == 0 || job.DiffURL == "" {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "ignored")
+		return
 	}
 
 	if err := queue.Push(r.Context(), job); err != nil {

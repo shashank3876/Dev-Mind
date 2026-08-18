@@ -1,4 +1,4 @@
-// Job defines the structure pushed to Redis for each GitHub webhook event.
+// Job defines the structure pushed to the PR-review queue for each GitHub webhook event.
 package models
 
 type Job struct {

@@ -1,0 +1,45 @@
+# Build and deploy the React frontend to Cloud Run.
+# Chat/auth still need the Express api-server; /review uses VITE_API_URL (ai-backend).
+substitutions:
+  _REGION: us-central1
+  _VITE_API_URL: https://devmind-ai-backend-nvnmzcvgva-uc.a.run.app
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/frontend:${BUILD_ID}
+      - -f
+      - frontend.Dockerfile
+      - --build-arg
+      - VITE_API_URL=${_VITE_API_URL}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/frontend:${BUILD_ID}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - devmind-frontend
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/frontend:${BUILD_ID}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --cpu=1
+      - --memory=256Mi
+      - --min-instances=0
+      - --max-instances=2
+      - --cpu-throttling
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/frontend:${BUILD_ID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
