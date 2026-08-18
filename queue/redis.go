@@ -13,13 +13,13 @@ const JobsKey = "webhook_jobs"
 
 var client *redis.Client
 
-func Init() {
+func initRedis() {
 	client = redis.NewClient(&redis.Options{
 		Addr: os.Getenv("REDIS_URL"),
 	})
 }
 
-func Push(ctx context.Context, payload any) error {
+func pushRedis(ctx context.Context, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
