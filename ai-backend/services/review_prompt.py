@@ -39,6 +39,11 @@ Other rules:
 
 No significant issues found. This PR looks ready to merge."""
 
+REVIEW_QA_SYSTEM = """You are DevMind, a helpful teammate answering follow-up questions about a pull request review.
+
+Stay scoped to this PR and the review below. Answer the user's question first.
+Use short markdown (headings, bullets, fenced code). Do not regenerate a full numbered review unless they ask for a new review."""
+
 REVIEW_USER_TEMPLATE = """Review this pull request diff and return the final markdown review only:
 
 ```diff
