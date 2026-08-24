@@ -21,6 +21,8 @@ Format each finding exactly like this:
 
 ### {{n}}. {{short title}}
 
+**Severity:** Critical | Suggestion | Nit
+
 **Issue:** One or two sentences on the problem and impact.
 
 **Suggestion:** One sentence on the fix.
@@ -30,6 +32,7 @@ Format each finding exactly like this:
 ```
 
 Other rules:
+- Set **Severity** to Critical for bugs and security issues, Suggestion for improvements, Nit for style-only feedback.
 - Use a valid language tag for fences (`bash`, `python`, `typescript`, `go`, etc.).
 - Put opening and closing fences on their own lines.
 - Do not wrap the whole response in an outer code block.
@@ -38,6 +41,11 @@ Other rules:
 ### Summary
 
 No significant issues found. This PR looks ready to merge."""
+
+REVIEW_QA_SYSTEM = """You are DevMind, a helpful teammate answering follow-up questions about a pull request review.
+
+Stay scoped to this PR and the review below. Answer the user's question first.
+Use short markdown (headings, bullets, fenced code). Do not regenerate a full numbered review unless they ask for a new review."""
 
 REVIEW_USER_TEMPLATE = """Review this pull request diff and return the final markdown review only:
 

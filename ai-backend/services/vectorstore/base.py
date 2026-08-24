@@ -1,6 +1,8 @@
 # Abstract vector store interface.
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
+
+from services.vectorstore.types import VectorSearchHit
 
 
 class VectorStore(ABC):
@@ -20,5 +22,5 @@ class VectorStore(ABC):
         ...
 
     @abstractmethod
-    async def search(self, vector: list[float], top_k: int = 5) -> list[str]:
+    async def search(self, vector: list[float], top_k: int = 5) -> list[VectorSearchHit]:
         ...

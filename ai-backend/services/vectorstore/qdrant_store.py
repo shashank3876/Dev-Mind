@@ -7,6 +7,7 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from services.secrets import get_secret
 from services.vectorstore.base import VectorStore
+from services.vectorstore.types import VectorSearchHit
 
 COLLECTION_LOCAL = "devmind_docs"
 COLLECTION_VERTEX = "devmind_docs_vertex"
@@ -59,10 +60,21 @@ class QdrantVectorStore(VectorStore):
         ]
         await client.upsert(self._collection, points=points)
 
-    async def search(self, vector: list[float], top_k: int = 5) -> list[str]:
+    async def search(self, vector: list[float], top_k: int = 5) -> list[VectorSearchHit]:
         client = get_client()
         results = await client.query_points(self._collection, query=vector, limit=top_k)
-        return [hit.payload.get("text", "") for hit in results.points if hit.payload]
+        hits: list[VectorSearchHit] = []
+        for point in results.points:
+            if not point.payload:
+                continue
+            hit: VectorSearchHit = {"text": str(point.payload.get("text", ""))}
+            source = point.payload.get("source")
+            if source is not None:
+                hit["source"] = str(source)
+            if point.score is not None:
+                hit["score"] = float(point.score)
+            hits.append(hit)
+        return hits
 
 
 _stores: dict[str, QdrantVectorStore] = {}

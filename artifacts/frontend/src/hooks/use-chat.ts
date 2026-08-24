@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetChatUsageQueryKey,
   useGetChatUsage,
 } from "@workspace/api-client-react";
-import { readSseStream } from "@/lib/sse";
+import { readSseStream, parseRagSources, type RagSource } from "@/lib/sse";
 import { useAuth } from "@/hooks/use-auth";
 
 export interface Message {
@@ -12,6 +12,16 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  sources?: RagSource[];
+}
+
+export type { RagSource };
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export class ChatQuotaError extends Error {
@@ -40,7 +50,67 @@ export function useChat() {
     },
   });
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  const refreshConversations = useCallback(async () => {
+    if (!isAuthenticated) {
+      setConversations([]);
+      return;
+    }
+    const response = await fetch("/api/conversations", { credentials: "include" });
+    if (!response.ok) return;
+    const data = (await response.json()) as { conversations?: ConversationSummary[] };
+    setConversations(data.conversations ?? []);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    void refreshConversations();
+  }, [refreshConversations]);
+
+  const startNewChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const loadConversation = useCallback(async (id: string) => {
+    setIsHistoryLoading(true);
+    try {
+      const response = await fetch(`/api/conversations/${id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to load conversation");
+      const data = (await response.json()) as {
+        conversation: ConversationSummary;
+        messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
+      };
+      setConversationId(data.conversation.id);
+      setMessages(
+        data.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+        })),
+      );
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, []);
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      const response = await fetch(`/api/conversations/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) return;
+      if (conversationId === id) {
+        startNewChat();
+      }
+      await refreshConversations();
+    },
+    [conversationId, refreshConversations, startNewChat],
+  );
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -59,7 +129,10 @@ export function useChat() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ message: content }),
+          body: JSON.stringify({
+            message: content,
+            conversationId: conversationId ?? undefined,
+          }),
         });
 
         if (response.status === 402) {
@@ -83,12 +156,28 @@ export function useChat() {
           throw new Error(`Request failed (${response.status})`);
         }
 
+        const createdId = response.headers.get("X-Conversation-Id");
+        if (createdId) {
+          setConversationId(createdId);
+        }
+
         if (!response.body) throw new Error("No response body");
 
         let fullAssistantContent = "";
+        let ragSources: RagSource[] | undefined;
         for await (const token of readSseStream(response.body)) {
           if (token === "[DONE]") continue;
           if (token.startsWith("[CONTEXT:") || token.startsWith("[PROVIDER:")) continue;
+          const sources = parseRagSources(token);
+          if (sources) {
+            ragSources = sources;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId ? { ...m, sources: ragSources } : m,
+              ),
+            );
+            continue;
+          }
           fullAssistantContent += token;
           setMessages((prev) =>
             prev.map((m) =>
@@ -99,12 +188,13 @@ export function useChat() {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, isStreaming: false } : m,
+            m.id === assistantMsgId ? { ...m, isStreaming: false, sources: ragSources } : m,
           ),
         );
 
         await refetchUsage();
         queryClient.invalidateQueries({ queryKey: getGetChatUsageQueryKey() });
+        await refreshConversations();
       } catch (error) {
         if (error instanceof ChatQuotaError) {
           setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
@@ -129,14 +219,28 @@ export function useChat() {
         setIsLoading(false);
       }
     },
-    [queryClient, refetchUsage, usage?.limit, usage?.resetsAt, usage?.used],
+    [
+      conversationId,
+      queryClient,
+      refetchUsage,
+      refreshConversations,
+      usage?.limit,
+      usage?.resetsAt,
+      usage?.used,
+    ],
   );
 
   return {
     messages,
     sendMessage,
     isLoading,
+    isHistoryLoading,
     usage: usage ?? null,
     isUsageLoading: isAuthenticated && isUsageLoading,
+    conversationId,
+    conversations,
+    startNewChat,
+    loadConversation,
+    deleteConversation,
   };
 }

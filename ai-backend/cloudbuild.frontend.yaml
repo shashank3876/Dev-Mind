@@ -1,5 +1,5 @@
 # Build and deploy the React frontend to Cloud Run.
-# Chat/auth still need the Express api-server; /review uses VITE_API_URL (ai-backend).
+# /api is proxied to the Express api-server (auth, chats, saved PR reviews).
 substitutions:
   _REGION: us-central1
   _VITE_API_URL: https://devmind-ai-backend-nvnmzcvgva-uc.a.run.app
@@ -37,6 +37,7 @@ steps:
       - --min-instances=0
       - --max-instances=2
       - --cpu-throttling
+      - --set-env-vars=API_SERVER_URL=https://devmind-api-server-24602646156.us-central1.run.app
 
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/frontend:${BUILD_ID}

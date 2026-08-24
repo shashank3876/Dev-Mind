@@ -4,6 +4,7 @@ from typing import Optional
 
 from services.embeddings import get_embedding_provider
 from services.vectorstore import get_vector_store
+from services.vectorstore.types import VectorSearchHit
 
 CHUNK_SIZE = 700
 CHUNK_OVERLAP = 100
@@ -45,7 +46,7 @@ async def upsert(text: str, metadata: Optional[dict] = None) -> list[str]:
     return ids
 
 
-async def search(query: str, top_k: int = 5) -> list[str]:
+async def search(query: str, top_k: int = 5) -> list[VectorSearchHit]:
     embedder = get_embedding_provider()
     store = get_vector_store()
     await store.ensure_collection(embedder.vector_size)

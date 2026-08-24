@@ -1,0 +1,51 @@
+# Build and deploy Express api-server (auth, chat proxy, billing) to Cloud Run.
+substitutions:
+  _REGION: us-central1
+  _APP_ORIGIN: https://devmind-frontend-nvnmzcvgva-uc.a.run.app
+  _AI_BACKEND_URL: https://devmind-ai-backend-nvnmzcvgva-uc.a.run.app
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/api-server:${BUILD_ID}
+      - -f
+      - api-server.Dockerfile
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/api-server:${BUILD_ID}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        SECRET_FLAGS=(
+          --set-secrets=DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest,RAZORPAY_KEY_ID=RAZORPAY_KEY_ID:latest,RAZORPAY_KEY_SECRET=RAZORPAY_KEY_SECRET:latest,RAZORPAY_WEBHOOK_SECRET=RAZORPAY_WEBHOOK_SECRET:latest
+        )
+        gcloud run deploy devmind-api-server \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/api-server:${BUILD_ID} \
+          --region=${_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --service-account=devmind-ai@${PROJECT_ID}.iam.gserviceaccount.com \
+          --add-cloudsql-instances=${PROJECT_ID}:${_REGION}:devmind-pg \
+          --cpu=1 \
+          --memory=512Mi \
+          --min-instances=0 \
+          --max-instances=2 \
+          --timeout=300 \
+          --cpu-throttling \
+          --set-env-vars=NODE_ENV=production,APP_ORIGIN=${_APP_ORIGIN},AI_BACKEND_URL=${_AI_BACKEND_URL} \
+          "$${SECRET_FLAGS[@]}"
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/devmind/api-server:${BUILD_ID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

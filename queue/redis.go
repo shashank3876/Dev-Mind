@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -13,9 +14,19 @@ const JobsKey = "webhook_jobs"
 
 var client *redis.Client
 
+func redisAddr() string {
+	addr := strings.TrimSpace(os.Getenv("REDIS_URL"))
+	if addr == "" {
+		return "localhost:6379"
+	}
+	addr = strings.TrimPrefix(addr, "redis://")
+	addr = strings.TrimPrefix(addr, "rediss://")
+	return addr
+}
+
 func initRedis() {
 	client = redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_URL"),
+		Addr: redisAddr(),
 	})
 }
 

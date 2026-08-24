@@ -4,13 +4,13 @@ import base64
 import json
 import os
 
-import redis.asyncio as aioredis
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-load_dotenv()
+from services.redis_client import create_redis_client, load_env
+
+load_env()
 
 from services.logging_config import setup_logging
 from services.memory import init_db
@@ -123,8 +123,7 @@ async def startup():
 
 
 async def redis_loop():
-    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
-    r = await aioredis.from_url(redis_url, decode_responses=True)
+    r = await create_redis_client()
     logger.info("waiting for redis jobs on %s...", JOBS_KEY)
 
     while True:

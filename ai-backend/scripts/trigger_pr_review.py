@@ -6,7 +6,6 @@ import os
 import sys
 
 import httpx
-import redis.asyncio as aioredis
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -83,8 +82,10 @@ async def enqueue_job(pr: dict) -> None:
         )
         print(f"Published review job to Pub/Sub topic {topic} for PR #{pr['number']} ({job['repo']})")
     else:
-        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
-        r = await aioredis.from_url(redis_url, decode_responses=True)
+        from services.redis_client import create_redis_client, load_env
+
+        load_env()
+        r = await create_redis_client()
         await r.lpush(JOBS_KEY, json.dumps(job))
         await r.aclose()
         print(f"Enqueued review job for PR #{pr['number']} ({job['repo']})")

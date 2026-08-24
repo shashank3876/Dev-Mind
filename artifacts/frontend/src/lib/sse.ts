@@ -38,3 +38,19 @@ export function parseReviewMeta(token: string): { repo: string; prNumber: number
     prNumber: Number(body.slice(lastColon + 1)),
   };
 }
+
+export interface RagSource {
+  text: string;
+  source?: string;
+  score?: number;
+}
+
+export function parseRagSources(token: string): RagSource[] | null {
+  if (!token.startsWith("[SOURCES:") || !token.endsWith("]")) return null;
+  try {
+    const parsed = JSON.parse(token.slice(9, -1)) as RagSource[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}

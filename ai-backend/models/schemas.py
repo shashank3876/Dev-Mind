@@ -11,10 +11,16 @@ class LLMProviderName(str, Enum):
     vertex = "vertex"
 
 
+class ChatHistoryMessage(BaseModel):
+    role: str
+    content: str
+
+
 class ChatRequest(BaseModel):
     message: str
     user_id: str = "anonymous"
     provider: Optional[LLMProviderName] = None
+    history: Optional[list[ChatHistoryMessage]] = None
 
 
 class ChatResponse(BaseModel):
@@ -41,6 +47,16 @@ class HealthResponse(BaseModel):
 
 class ReviewRequest(BaseModel):
     pr_url: str
+    provider: Optional[LLMProviderName] = None
+
+
+class ReviewAskRequest(BaseModel):
+    question: str
+    review: str
+    pr_url: Optional[str] = None
+    repo: Optional[str] = None
+    pr_number: Optional[int] = None
+    history: Optional[list[ChatHistoryMessage]] = None
     provider: Optional[LLMProviderName] = None
 
 
