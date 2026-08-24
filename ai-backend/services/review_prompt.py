@@ -21,6 +21,8 @@ Format each finding exactly like this:
 
 ### {{n}}. {{short title}}
 
+**Severity:** Critical | Suggestion | Nit
+
 **Issue:** One or two sentences on the problem and impact.
 
 **Suggestion:** One sentence on the fix.
@@ -30,6 +32,7 @@ Format each finding exactly like this:
 ```
 
 Other rules:
+- Set **Severity** to Critical for bugs and security issues, Suggestion for improvements, Nit for style-only feedback.
 - Use a valid language tag for fences (`bash`, `python`, `typescript`, `go`, etc.).
 - Put opening and closing fences on their own lines.
 - Do not wrap the whole response in an outer code block.

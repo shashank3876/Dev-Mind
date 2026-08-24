@@ -1,14 +1,48 @@
 # DevMind
 
-DevMind is an AI-powered developer assistant that combines a streaming chat interface, retrieval-augmented generation (RAG), and automated GitHub pull request reviews. It is built as a polyglot monorepo: a Go gateway for webhooks, a Python FastAPI backend for LLM orchestration, and a React frontend for the chat experience.
+**AI developer assistant with RAG-powered chat and automated GitHub PR reviews.**
 
-## Features
+[**Live demo**](https://devmind-frontend-nvnmzcvgva-uc.a.run.app) · [Architecture deep-dive](./ARCHITECTURE.md)
 
-- **Streaming chat** — Real-time responses over Server-Sent Events (SSE) with support for Claude, Gemini, and OpenAI
-- **RAG context** — Ingest documents into Qdrant and retrieve relevant chunks during chat
-- **Conversation memory** — Per-user chat history stored in SQLite
-- **Automated PR reviews** — GitHub webhooks trigger background workers that fetch diffs, run LLM reviews, and post comments
-- **Multi-provider LLM routing** — Switch providers via environment config or per-request selection
+DevMind is a full-stack AI platform: users chat with retrieval-augmented context, and GitHub pull requests trigger an async review pipeline that posts structured feedback. Built as a polyglot monorepo spanning Go, Python, and TypeScript.
+
+## Why I built this
+
+Most portfolio chat apps stop at a prompt box. I wanted to demonstrate how real AI products are structured — async job processing, vector search, multi-provider LLM routing, auth, usage limits, and production deployment — in one cohesive system I can walk through in a system-design interview.
+
+## Engineering highlights
+
+- **Polyglot monorepo** — Go webhook gateway, Python FastAPI (LLM + RAG), Express api-server (auth/billing), React frontend
+- **Event-driven PR pipeline** — GitHub webhook → Redis/PubSub queue → background worker → GitHub comment
+- **RAG with source citations** — Qdrant vector search injects context into chat; users can inspect retrieved chunks
+- **Multi-provider LLM routing** — Claude, Gemini, OpenAI, and Vertex AI via a pluggable provider interface
+- **Product features** — OAuth (Google/GitHub), conversation history, usage quotas, Razorpay billing
+- **GCP deployment** — Cloud Run services with Secret Manager, structured logging, and Cloud Build CI
+
+## Screenshots
+
+Add PNGs to [`docs/screenshots/`](docs/screenshots/) and embed them here:
+
+| Chat | PR Review | Architecture |
+|------|-----------|--------------|
+| `docs/screenshots/chat.png` | `docs/screenshots/pr-review.png` | `docs/screenshots/architecture.png` |
+
+## Interview talking points
+
+- **Service boundaries** — Why Go handles webhooks (fast, static binary) while Python owns LLM/RAG (rich SDK ecosystem)
+- **Reliability** — Webhook signature verification, non-blocking RAG failures, async workers with retries
+- **RAG design** — Chunking strategy, embedding provider abstraction, source metadata for user transparency
+- **Scale path** — Connection pooling, rate limits, dedicated worker pools, embedding cache at 10k users
+
+## Tech stack
+
+| Layer | Technologies |
+|---|---|
+| Gateway | Go, chi, Redis / PubSub |
+| AI Backend | Python, FastAPI, Anthropic/OpenAI/Gemini/Vertex SDKs, Qdrant, sentence-transformers |
+| Frontend | React 19, Vite, Tailwind CSS, Radix UI |
+| API Server | Express 5, Drizzle ORM, Pino |
+| Tooling | pnpm workspaces, TypeScript, GitHub Actions CI |
 
 ## Architecture
 
@@ -32,8 +66,6 @@ flowchart LR
     WRK[Python Worker]
   end
 
-  
-  
   UI -->|POST /chat SSE| API
   API --> RAG
   API --> MEM
@@ -43,10 +75,20 @@ flowchart LR
   WRK -->|Post comment| GH
 ```
 
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flows, failure modes, and tradeoffs.
+
 ### How it works
 
 1. **Chat flow** — The frontend sends messages to the AI backend. The backend loads recent history from SQLite, optionally retrieves context from Qdrant, and streams tokens from the selected LLM provider.
 2. **PR review flow** — GitHub sends `pull_request` or `push` events to the Go gateway. The gateway verifies the webhook signature, enqueues a job in Redis, and the Python worker picks it up, fetches the PR diff, generates a review, and posts it as a GitHub comment.
+
+## Features
+
+- **Streaming chat** — Real-time responses over Server-Sent Events (SSE) with support for Claude, Gemini, and OpenAI
+- **RAG context** — Ingest documents into Qdrant and retrieve relevant chunks during chat
+- **Conversation memory** — Per-user chat history stored in SQLite
+- **Automated PR reviews** — GitHub webhooks trigger background workers that fetch diffs, run LLM reviews, and post comments
+- **Multi-provider LLM routing** — Switch providers via environment config or per-request selection
 
 ## Project structure
 
@@ -245,6 +287,14 @@ Configure your GitHub repository webhook to point at `https://<your-host>/webhoo
 pnpm run typecheck
 ```
 
+### Tests
+
+```bash
+go test ./...
+cd ai-backend && pytest
+cd artifacts/frontend && pnpm test
+```
+
 ### Build
 
 ```bash
@@ -259,16 +309,6 @@ The TypeScript packages under `lib/` are generated and shared across artifacts:
 - `api-zod` — Zod schemas generated from the spec
 - `api-client-react` — React Query hooks generated from the spec
 - `db` — Drizzle ORM database schema
-
-## Tech stack
-
-| Layer | Technologies |
-|---|---|
-| Gateway | Go, chi, Redis |
-| AI Backend | Python, FastAPI, Anthropic/OpenAI/Gemini/Vertex SDKs, Qdrant, sentence-transformers |
-| Frontend | React 19, Vite, Tailwind CSS, Radix UI |
-| API Server | Express 5, Drizzle ORM, Pino |
-| Tooling | pnpm workspaces, TypeScript, esbuild |
 
 ## License
 

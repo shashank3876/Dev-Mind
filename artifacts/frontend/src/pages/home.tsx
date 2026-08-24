@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AppHeader } from "@/components/app-header";
 import { ConversationSidebar } from "@/components/conversation-sidebar";
 import { ChatMarkdown } from "@/components/chat-markdown";
+import { RagSources } from "@/components/rag-sources";
 import { Send, Terminal, Loader2, Sparkles, Code2, Regex, Database } from "lucide-react";
 import { UpgradeButton } from "@/components/upgrade-button";
 import { useToast } from "@/hooks/use-toast";
@@ -197,6 +198,9 @@ export default function Home() {
                       <span className="streaming-cursor" aria-hidden="true" />
                     )}
                   </div>
+                  {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
+                    <RagSources sources={msg.sources} />
+                  )}
                 </div>
                 {msg.role === "user" && (
                   <Avatar className="w-8 h-8 border border-violet-400/40 shadow-sm shrink-0 mt-5">

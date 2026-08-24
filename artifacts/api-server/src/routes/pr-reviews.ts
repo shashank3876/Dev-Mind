@@ -55,6 +55,7 @@ function isMetaToken(token: string): boolean {
     token === "[DONE]" ||
     token.startsWith("[META:") ||
     token.startsWith("[CONTEXT:") ||
+    token.startsWith("[SOURCES:") ||
     token.startsWith("[PROVIDER:")
   );
 }

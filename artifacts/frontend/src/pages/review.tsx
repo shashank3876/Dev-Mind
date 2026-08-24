@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AppHeader } from "@/components/app-header";
 import { ReviewSidebar } from "@/components/review-sidebar";
+import { ReviewFindingsSummary } from "@/components/review-findings-summary";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { Loader2, GitPullRequest, ExternalLink, Send } from "lucide-react";
 
@@ -169,11 +170,14 @@ export default function ReviewPage() {
             {isLoading && !review && <ReviewSkeleton />}
 
             {review && (
-              <div className="rounded-2xl border border-cyan-500/20 bg-card/80 shadow-[0_4px_20px_hsl(186_100%_41%/0.08)] px-5 py-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <ChatMarkdown content={review} />
-                {isStreaming && (
-                  <span className="streaming-cursor" aria-hidden="true" />
-                )}
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <ReviewFindingsSummary review={review} />
+                <div className="rounded-2xl border border-cyan-500/20 bg-card/80 shadow-[0_4px_20px_hsl(186_100%_41%/0.08)] px-5 py-5">
+                  <ChatMarkdown content={review} />
+                  {isStreaming && (
+                    <span className="streaming-cursor" aria-hidden="true" />
+                  )}
+                </div>
               </div>
             )}
 

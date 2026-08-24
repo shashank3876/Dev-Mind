@@ -5,7 +5,8 @@ from typing import Any, Optional
 from google.cloud import aiplatform
 
 from services.vectorstore.base import VectorStore
-from services.vectorstore.payload_store import get_texts, save_payloads
+from services.vectorstore.payload_store import get_hits, save_payloads
+from services.vectorstore.types import VectorSearchHit
 
 
 class VertexVectorStore(VectorStore):
@@ -51,7 +52,7 @@ class VertexVectorStore(VectorStore):
             datapoints=datapoints,
         )
 
-    async def search(self, vector: list[float], top_k: int = 5) -> list[str]:
+    async def search(self, vector: list[float], top_k: int = 5) -> list[VectorSearchHit]:
         response = self._endpoint.find_neighbors(
             deployed_index_id=self._deployed_index_id,
             queries=[vector],
@@ -59,12 +60,17 @@ class VertexVectorStore(VectorStore):
         )
         if not response or not response[0]:
             return []
-        ids = [
-            neighbor.datapoint.datapoint_id
-            for neighbor in response[0]
-            if neighbor.datapoint and neighbor.datapoint.datapoint_id
-        ]
-        return get_texts(ids)
+        ids: list[str] = []
+        scores: list[float] = []
+        for neighbor in response[0]:
+            if neighbor.datapoint and neighbor.datapoint.datapoint_id:
+                ids.append(neighbor.datapoint.datapoint_id)
+                if neighbor.distance is not None:
+                    scores.append(float(neighbor.distance))
+                else:
+                    scores.append(0.0)
+        raw_hits = get_hits(ids, scores if scores else None)
+        return raw_hits
 
 
 _store: Optional[VertexVectorStore] = None

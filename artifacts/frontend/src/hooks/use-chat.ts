@@ -4,7 +4,7 @@ import {
   getGetChatUsageQueryKey,
   useGetChatUsage,
 } from "@workspace/api-client-react";
-import { readSseStream } from "@/lib/sse";
+import { readSseStream, parseRagSources, type RagSource } from "@/lib/sse";
 import { useAuth } from "@/hooks/use-auth";
 
 export interface Message {
@@ -12,7 +12,10 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  sources?: RagSource[];
 }
+
+export type { RagSource };
 
 export interface ConversationSummary {
   id: string;
@@ -161,9 +164,20 @@ export function useChat() {
         if (!response.body) throw new Error("No response body");
 
         let fullAssistantContent = "";
+        let ragSources: RagSource[] | undefined;
         for await (const token of readSseStream(response.body)) {
           if (token === "[DONE]") continue;
           if (token.startsWith("[CONTEXT:") || token.startsWith("[PROVIDER:")) continue;
+          const sources = parseRagSources(token);
+          if (sources) {
+            ragSources = sources;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId ? { ...m, sources: ragSources } : m,
+              ),
+            );
+            continue;
+          }
           fullAssistantContent += token;
           setMessages((prev) =>
             prev.map((m) =>
@@ -174,7 +188,7 @@ export function useChat() {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, isStreaming: false } : m,
+            m.id === assistantMsgId ? { ...m, isStreaming: false, sources: ragSources } : m,
           ),
         );
 

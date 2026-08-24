@@ -10,6 +10,10 @@ import {
 
 const router: IRouter = Router();
 
+function routeId(value: string | string[] | undefined): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 router.get("/conversations", requireAuth, async (req, res) => {
   const rows = await listConversations(req.authUser!.id);
   res.json({
@@ -35,7 +39,12 @@ router.post("/conversations", requireAuth, async (req, res) => {
 });
 
 router.get("/conversations/:id", requireAuth, async (req, res) => {
-  const conversation = await getConversationForUser(req.params.id, req.authUser!.id);
+  const id = routeId(req.params.id);
+  if (!id) {
+    res.status(400).json({ message: "Invalid conversation id." });
+    return;
+  }
+  const conversation = await getConversationForUser(id, req.authUser!.id);
   if (!conversation) {
     res.status(404).json({ message: "Conversation not found." });
     return;
@@ -59,7 +68,12 @@ router.get("/conversations/:id", requireAuth, async (req, res) => {
 });
 
 router.delete("/conversations/:id", requireAuth, async (req, res) => {
-  const deleted = await deleteConversation(req.params.id, req.authUser!.id);
+  const id = routeId(req.params.id);
+  if (!id) {
+    res.status(400).json({ message: "Invalid conversation id." });
+    return;
+  }
+  const deleted = await deleteConversation(id, req.authUser!.id);
   if (!deleted) {
     res.status(404).json({ message: "Conversation not found." });
     return;

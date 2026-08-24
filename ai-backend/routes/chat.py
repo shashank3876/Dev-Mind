@@ -1,4 +1,5 @@
 # /chat route — accepts a message + user_id + provider, streams LLM response via SSE.
+import json
 import logging
 
 from fastapi import APIRouter
@@ -7,6 +8,7 @@ from models.schemas import ChatRequest, ClearChatRequest
 from services import memory, rag
 from services.llm import DEFAULT_PROVIDER, get_provider, list_providers
 from services.sse import format_sse
+from services.vectorstore.types import VectorSearchHit
 
 router = APIRouter()
 logger = logging.getLogger("devmind-api")
@@ -42,23 +44,34 @@ async def chat(req: ChatRequest):
     if persist_sqlite:
         memory.save_message(req.user_id, "user", req.message)
 
-    rag_results: list[str] = []
+    rag_results: list[VectorSearchHit] = []
     try:
         rag_results = await rag.search(req.message)
     except Exception as e:
         logger.warning("RAG search failed, continuing without context: %s", e)
 
     if rag_results:
-        context = "\n---\n".join(rag_results)
+        context = "\n---\n".join(hit["text"] for hit in rag_results if hit.get("text"))
         system = f"{BASE_SYSTEM}\n\nRelevant context:\n{context}"
     else:
         system = BASE_SYSTEM
 
     context_count = len(rag_results)
+    sources_json = json.dumps(
+        [
+            {
+                "text": hit.get("text", ""),
+                **({"source": hit["source"]} if hit.get("source") else {}),
+                **({"score": hit["score"]} if hit.get("score") is not None else {}),
+            }
+            for hit in rag_results
+        ]
+    )
 
     async def event_stream():
         if context_count:
             yield format_sse(f"[CONTEXT:{context_count}]")
+            yield format_sse(f"[SOURCES:{sources_json}]")
         full_reply = []
         async for token in llm.stream_response(history, system=system):
             full_reply.append(token)
