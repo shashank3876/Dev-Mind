@@ -5,6 +5,14 @@ import {
   getChatUsageSummary,
   recordChatUsage,
 } from "../services/usage";
+import {
+  appendMessage,
+  createConversation,
+  getConversationForUser,
+  getRecentHistory,
+  setConversationTitle,
+  titleFromMessage,
+} from "../services/conversations";
 import { GetChatUsageResponse } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
@@ -13,6 +21,35 @@ const router: IRouter = Router();
 function getAiBackendUrl(): string {
   const url = process.env.AI_BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8001";
   return url.replace(/\/+$/, "");
+}
+
+function consumeSseTokens(chunk: string, buffer: string): { tokens: string[]; buffer: string } {
+  const combined = buffer + chunk;
+  const frames = combined.split("\n\n");
+  const nextBuffer = frames.pop() ?? "";
+  const tokens: string[] = [];
+
+  for (const frame of frames) {
+    for (const line of frame.split("\n")) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6);
+      try {
+        tokens.push(JSON.parse(raw) as string);
+      } catch {
+        tokens.push(raw);
+      }
+    }
+  }
+
+  return { tokens, buffer: nextBuffer };
+}
+
+function isMetaToken(token: string): boolean {
+  return (
+    token === "[DONE]" ||
+    token.startsWith("[CONTEXT:") ||
+    token.startsWith("[PROVIDER:")
+  );
 }
 
 router.get("/chat/usage", requireAuth, async (req, res) => {
@@ -41,10 +78,32 @@ router.post("/chat", requireAuth, async (req, res) => {
     return;
   }
 
+  const trimmed = message.trim();
+  let conversationId =
+    typeof req.body?.conversationId === "string" ? req.body.conversationId : "";
+
+  if (conversationId) {
+    const existing = await getConversationForUser(conversationId, user.id);
+    if (!existing) {
+      res.status(404).json({ message: "Conversation not found." });
+      return;
+    }
+  } else {
+    const created = await createConversation(user.id, titleFromMessage(trimmed));
+    conversationId = created.id;
+  }
+
+  const history = await getRecentHistory(conversationId);
+  await appendMessage(conversationId, "user", trimmed);
+  if (history.length === 0) {
+    await setConversationTitle(conversationId, titleFromMessage(trimmed));
+  }
+
   const provider = req.body?.provider;
-  const payload: Record<string, string> = {
-    message: message.trim(),
+  const payload: Record<string, unknown> = {
+    message: trimmed,
     user_id: user.id,
+    history,
   };
   if (typeof provider === "string" && provider) {
     payload.provider = provider;
@@ -79,8 +138,12 @@ router.post("/chat", requireAuth, async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Conversation-Id", conversationId);
+  res.setHeader("Access-Control-Expose-Headers", "X-Conversation-Id");
 
   let recorded = false;
+  let sseBuffer = "";
+  let assistantContent = "";
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
 
@@ -91,6 +154,14 @@ router.post("/chat", requireAuth, async (req, res) => {
 
       const chunk = decoder.decode(value, { stream: true });
       res.write(chunk);
+
+      const parsed = consumeSseTokens(chunk, sseBuffer);
+      sseBuffer = parsed.buffer;
+      for (const token of parsed.tokens) {
+        if (!isMetaToken(token)) {
+          assistantContent += token;
+        }
+      }
 
       if (!recorded && chunk.includes("[DONE]")) {
         await recordChatUsage(user.id);
@@ -107,6 +178,14 @@ router.post("/chat", requireAuth, async (req, res) => {
 
   if (!recorded) {
     await recordChatUsage(user.id);
+  }
+
+  if (assistantContent.trim()) {
+    try {
+      await appendMessage(conversationId, "assistant", assistantContent);
+    } catch (err) {
+      logger.error({ err }, "Failed to persist assistant message");
+    }
   }
 
   res.end();

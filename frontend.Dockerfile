@@ -20,9 +20,13 @@ RUN pnpm --filter @workspace/frontend run build
 
 FROM nginx:1.27-alpine
 
-COPY artifacts/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache gettext
+
+COPY artifacts/frontend/nginx.conf.template /etc/nginx/default.conf.template
+COPY artifacts/frontend/start-nginx.sh /start-nginx.sh
+RUN chmod +x /start-nginx.sh
 COPY --from=build /app/artifacts/frontend/dist/public /usr/share/nginx/html
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/start-nginx.sh"]

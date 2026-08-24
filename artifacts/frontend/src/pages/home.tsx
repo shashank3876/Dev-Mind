@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AppHeader } from "@/components/app-header";
+import { ConversationSidebar } from "@/components/conversation-sidebar";
+import { ChatMarkdown } from "@/components/chat-markdown";
 import { Send, Terminal, Loader2, Sparkles, Code2, Regex, Database } from "lucide-react";
 import { UpgradeButton } from "@/components/upgrade-button";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +22,18 @@ function formatResetDate(iso: string): string {
 
 export default function Home() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { messages, sendMessage, isLoading, usage, isUsageLoading } = useChat();
+  const {
+    messages,
+    sendMessage,
+    isLoading,
+    usage,
+    isUsageLoading,
+    conversationId,
+    conversations,
+    startNewChat,
+    loadConversation,
+    deleteConversation,
+  } = useChat();
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,7 +84,17 @@ export default function Home() {
       : null;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-background text-foreground font-sans selection:bg-primary/30 relative">
+    <div className="flex h-screen max-h-screen bg-background text-foreground font-sans selection:bg-cyan-400/30">
+      {isAuthenticated && (
+        <ConversationSidebar
+          conversations={conversations}
+          activeId={conversationId}
+          onNewChat={startNewChat}
+          onSelect={(id) => { void loadConversation(id); }}
+          onDelete={(id) => { void deleteConversation(id); }}
+        />
+      )}
+      <div className="flex flex-col flex-1 min-w-0 relative">
       <AppHeader
         navLinks={[{ href: "/review", label: "Review a PR" }]}
         extra={
@@ -115,19 +138,19 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-10 w-full max-w-lg">
                 {[
-                  { text: "Review my React component for performance issues", icon: Sparkles },
-                  { text: "Explain how React Server Components work", icon: Code2 },
-                  { text: "Write a regex to match valid email addresses", icon: Regex },
-                  { text: "Optimize my Drizzle database query", icon: Database },
-                ].map(({ text, icon: Icon }, i) => (
+                  { text: "Review my React component for performance issues", icon: Sparkles, tint: "bg-amber-500/15 text-amber-300 group-hover:bg-amber-500/25" },
+                  { text: "Explain how React Server Components work", icon: Code2, tint: "bg-sky-500/15 text-sky-300 group-hover:bg-sky-500/25" },
+                  { text: "Write a regex to match valid email addresses", icon: Regex, tint: "bg-fuchsia-500/15 text-fuchsia-300 group-hover:bg-fuchsia-500/25" },
+                  { text: "Optimize my Drizzle database query", icon: Database, tint: "bg-emerald-500/15 text-emerald-300 group-hover:bg-emerald-500/25" },
+                ].map(({ text, icon: Icon, tint }, i) => (
                   <button
                     key={i}
                     onClick={() => { if (canSend) setInput(text); }}
                     disabled={!canSend}
                     className="group text-left px-4 py-3.5 rounded-xl border border-border/50 bg-secondary/20 hover:bg-secondary/50 hover:border-primary/40 hover:shadow-[0_4px_16px_hsl(var(--primary)/0.08)] transition-all duration-200 text-sm text-muted-foreground hover:text-foreground active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-start gap-3"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <Icon className="w-3.5 h-3.5 text-primary" />
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${tint}`}>
+                      <Icon className="w-3.5 h-3.5" />
                     </div>
                     <span className="leading-snug pt-0.5">{text}</span>
                   </button>
@@ -142,8 +165,8 @@ export default function Home() {
                 data-testid={`message-${msg.role}`}
               >
                 {msg.role === "assistant" && (
-                  <Avatar className="w-8 h-8 border border-border/50 shadow-sm shrink-0 mt-5">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                  <Avatar className="w-8 h-8 border border-cyan-400/40 shadow-[0_0_12px_hsl(186_100%_41%/0.35)] shrink-0 mt-5">
+                    <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-zinc-950 text-xs font-medium">
                       DM
                     </AvatarFallback>
                   </Avatar>
@@ -155,25 +178,29 @@ export default function Home() {
                       : "items-end max-w-[85%]"
                   }`}
                 >
-                  <span className={`text-[10px] font-mono uppercase tracking-wider text-muted-foreground px-1 ${msg.role === "user" ? "text-right" : ""}`}>
+                  <span className={`text-[10px] font-mono uppercase tracking-wider px-1 ${msg.role === "user" ? "text-right text-violet-300" : "text-cyan-300"}`}>
                     {msg.role === "assistant" ? "DevMind" : "You"}
                   </span>
                   <div
                     className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-sm shadow-[0_2px_12px_hsl(var(--primary)/0.25)]"
-                        : "bg-card border border-border/60 text-foreground rounded-tl-sm whitespace-pre-wrap font-mono text-[13px] shadow-sm"
+                        ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white rounded-tr-sm shadow-[0_2px_12px_hsl(280_80%_55%/0.35)]"
+                        : "bg-card/80 border border-cyan-500/20 text-foreground rounded-tl-sm shadow-[0_4px_20px_hsl(186_100%_41%/0.08)]"
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <ChatMarkdown content={msg.content} />
+                    ) : (
+                      msg.content
+                    )}
                     {msg.isStreaming && (
                       <span className="streaming-cursor" aria-hidden="true" />
                     )}
                   </div>
                 </div>
                 {msg.role === "user" && (
-                  <Avatar className="w-8 h-8 border border-border/50 shadow-sm shrink-0 mt-5">
-                    <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
+                  <Avatar className="w-8 h-8 border border-violet-400/40 shadow-sm shrink-0 mt-5">
+                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-xs font-medium">
                       ME
                     </AvatarFallback>
                   </Avatar>
@@ -240,6 +267,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
