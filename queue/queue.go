@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"devmind/gateway/models"
 )
 
 const (
@@ -24,6 +26,10 @@ func Init() {
 	switch backend {
 	case BackendPubSub:
 		initPubSub()
+		// Optional Redis for webhook dedup when REDIS_URL is set in production.
+		if strings.TrimSpace(os.Getenv("REDIS_URL")) != "" {
+			initRedis()
+		}
 	case BackendRedis:
 		initRedis()
 	default:
@@ -36,4 +42,13 @@ func Push(ctx context.Context, payload any) error {
 		return publishPubSub(ctx, payload)
 	}
 	return pushRedis(ctx, payload)
+}
+
+// ReserveDedup returns false when this delivery or repo#pr@sha was already accepted.
+// If Redis is unavailable, it returns true so the worker can still dedup.
+func ReserveDedup(ctx context.Context, job models.Job) (bool, error) {
+	if !redisReady() {
+		return true, nil
+	}
+	return reserveDedupRedis(ctx, job)
 }

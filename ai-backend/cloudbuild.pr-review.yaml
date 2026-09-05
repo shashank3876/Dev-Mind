@@ -4,6 +4,8 @@ substitutions:
   _REGION: us-central1
   _PUBSUB_TOPIC: devmind-pr-jobs
   _PUBSUB_SUBSCRIPTION: devmind-pr-worker
+  _PUBSUB_DLQ_TOPIC: devmind-pr-jobs-dlq
+  _PUBSUB_DLQ_SUBSCRIPTION: devmind-pr-jobs-dlq
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -130,9 +132,24 @@ steps:
           --project="${PROJECT_ID}" \
           2>/dev/null || echo "Topic ${_PUBSUB_TOPIC} already exists"
 
+        gcloud pubsub topics create ${_PUBSUB_DLQ_TOPIC} \
+          --project="${PROJECT_ID}" \
+          2>/dev/null || echo "Topic ${_PUBSUB_DLQ_TOPIC} already exists"
+
+        gcloud pubsub subscriptions create ${_PUBSUB_DLQ_SUBSCRIPTION} \
+          --topic=${_PUBSUB_DLQ_TOPIC} \
+          --project="${PROJECT_ID}" \
+          2>/dev/null || echo "Subscription ${_PUBSUB_DLQ_SUBSCRIPTION} already exists"
+
         warn_if_denied "publisher on topic ${_PUBSUB_TOPIC}" \
           gcloud pubsub topics add-iam-policy-binding ${_PUBSUB_TOPIC} \
             --member="serviceAccount:$${RUNTIME_SA}" \
+            --role="roles/pubsub.publisher" \
+            --quiet
+
+        warn_if_denied "DLQ publisher for Pub/Sub service agent" \
+          gcloud pubsub topics add-iam-policy-binding ${_PUBSUB_DLQ_TOPIC} \
+            --member="serviceAccount:$${PUBSUB_SA}" \
             --role="roles/pubsub.publisher" \
             --quiet
 
@@ -142,7 +159,11 @@ steps:
               --push-endpoint="$${WORKER_URL}/pubsub" \
               --push-auth-service-account="$${INVOKER_SA}" \
               --push-auth-token-audience="$${WORKER_URL}" \
-              --ack-deadline=120
+              --ack-deadline=120 \
+              --min-retry-delay=10s \
+              --max-retry-delay=120s \
+              --dead-letter-topic=projects/${PROJECT_ID}/topics/${_PUBSUB_DLQ_TOPIC} \
+              --max-delivery-attempts=5
         else
           warn_if_denied "push subscription create" \
             gcloud pubsub subscriptions create ${_PUBSUB_SUBSCRIPTION} \
@@ -151,8 +172,18 @@ steps:
               --push-endpoint="$${WORKER_URL}/pubsub" \
               --push-auth-service-account="$${INVOKER_SA}" \
               --push-auth-token-audience="$${WORKER_URL}" \
-              --ack-deadline=120
+              --ack-deadline=120 \
+              --min-retry-delay=10s \
+              --max-retry-delay=120s \
+              --dead-letter-topic=projects/${PROJECT_ID}/topics/${_PUBSUB_DLQ_TOPIC} \
+              --max-delivery-attempts=5
         fi
+
+        warn_if_denied "subscriber on ${_PUBSUB_SUBSCRIPTION} for DLQ forwarding" \
+          gcloud pubsub subscriptions add-iam-policy-binding ${_PUBSUB_SUBSCRIPTION} \
+            --member="serviceAccount:$${PUBSUB_SA}" \
+            --role="roles/pubsub.subscriber" \
+            --quiet
 
         echo "Pub/Sub push configured: $${WORKER_URL}/pubsub"
 

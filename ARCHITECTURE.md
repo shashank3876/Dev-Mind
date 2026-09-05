@@ -1,4 +1,4 @@
-# DevMind Architecture
+ # DevMind Architecture
 
 This document explains how DevMind is structured, why services are split the way they are, and how the system handles failure and scale.
 
@@ -82,12 +82,17 @@ sequenceDiagram
   participant AI as LLM_Provider
 
   GH->>GW: POST /webhook/github
-  GW->>GW: Verify HMAC signature
-  GW->>Q: Enqueue review job
-  W->>Q: Poll/subscribe for job
-  W->>GH: Fetch PR diff
-  W->>AI: Stream review (structured prompt)
-  W->>GH: Post review comment
+  GW->>GW: Verify HMAC + dedup delivery/SHA
+  GW->>Q: Enqueue job (id, delivery_id, idempotency_key)
+  W->>Q: Claim job (BRPOPLPUSH or Pub/Sub push)
+  alt already succeeded
+    W-->>Q: Ack duplicate
+  else process
+    W->>GH: Fetch PR diff
+    W->>AI: Review (in-process retries + exp backoff)
+    W->>GH: Post review comment
+    W->>W: Mark succeeded or retry/DLQ
+  end
 ```
 
 Key details:
@@ -95,6 +100,8 @@ Key details:
 1. **Signature verification** happens in Go middleware before any job is enqueued — invalid webhooks are rejected with 401.
 2. The queue decouples webhook receipt from LLM processing, so slow reviews never cause GitHub webhook timeouts.
 3. Reviews use a structured markdown prompt with severity labels (Critical / Suggestion / Nit) for consistent output.
+4. **Job reliability** — each job has an ID, GitHub `X-GitHub-Delivery` dedup, and `repo#pr@sha` idempotency. Redis uses a processing list + delayed retry ZSET + `webhook_jobs_dlq`. Pub/Sub returns 503 on retryable failure and forwards to `devmind-pr-jobs-dlq` after 5 deliveries. Worker status lives in `jobs.db` (`GET /jobs/{id}`).
+5. **Graceful shutdown** — gateway `http.Server.Shutdown`; worker finishes the in-flight review before exiting. Redis in-flight jobs are requeued on restart.
 
 ## Failure modes
 
@@ -104,7 +111,10 @@ Key details:
 | LLM provider timeout | SSE stream ends with error; partial response may be saved |
 | Invalid webhook signature | 401 response; no job enqueued |
 | Monthly chat quota exceeded | 402 from api-server before reaching ai-backend |
-| Worker crash mid-review | Job can be retried from queue (at-least-once delivery) |
+| Worker crash mid-review | Redis: job stays in `webhook_jobs_processing` and is requeued on restart. Pub/Sub: 503 redelivers until max attempts, then DLQ. Succeeded SHA/delivery is skipped (idempotent). |
+| Transient GitHub/LLM error | In-process retries (3) with exponential backoff + jitter, then queue-level retry up to `max_attempts` (5) |
+| Job exceeds max attempts | Written to dead-letter queue (`webhook_jobs_dlq` / `devmind-pr-jobs-dlq`); status `dead_letter` |
+| Duplicate GitHub webhook | Same `X-GitHub-Delivery` or `repo#pr@sha` returns 200 `duplicate` and does not post another comment |
 
 ## Data stores
 
@@ -151,6 +161,8 @@ Secrets are loaded from **Secret Manager** (`USE_GCP_SECRETS=true`). Structured 
 - Chat route: `ai-backend/routes/chat.py`
 - RAG service: `ai-backend/services/rag.py`
 - Webhook middleware: `middleware/verify.go`
+- Job model / dedup: `models/job.go`, `handlers/github.go`, `queue/`
+- Worker jobs: `ai-backend/worker.py`, `ai-backend/services/jobs.py`, `ai-backend/services/job_store.py`
 - Review prompts: `ai-backend/services/review_prompt.py`
 - Chat proxy: `artifacts/api-server/src/routes/chat.ts`
 - Frontend hooks: `artifacts/frontend/src/hooks/use-chat.ts`
