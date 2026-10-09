@@ -1,8 +1,10 @@
 # Abstract vector store interface.
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Literal, Optional
 
 from services.vectorstore.types import VectorSearchHit
+
+SearchMode = Literal["hybrid", "vector"]
 
 
 class VectorStore(ABC):
@@ -22,5 +24,12 @@ class VectorStore(ABC):
         ...
 
     @abstractmethod
-    async def search(self, vector: list[float], top_k: int = 5) -> list[VectorSearchHit]:
+    async def search(
+        self,
+        vector: list[float],
+        top_k: int = 5,
+        *,
+        query_text: Optional[str] = None,
+        mode: SearchMode = "hybrid",
+    ) -> list[VectorSearchHit]:
         ...

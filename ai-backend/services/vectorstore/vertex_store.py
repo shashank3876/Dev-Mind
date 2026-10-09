@@ -1,10 +1,11 @@
 # Vertex AI Vector Search (Matching Engine) implementation.
+# Hybrid (BM25+dense) is Qdrant-only; Vertex falls back to dense search.
 import os
 from typing import Any, Optional
 
 from google.cloud import aiplatform
 
-from services.vectorstore.base import VectorStore
+from services.vectorstore.base import SearchMode, VectorStore
 from services.vectorstore.payload_store import get_hits, save_payloads
 from services.vectorstore.types import VectorSearchHit
 
@@ -52,7 +53,16 @@ class VertexVectorStore(VectorStore):
             datapoints=datapoints,
         )
 
-    async def search(self, vector: list[float], top_k: int = 5) -> list[VectorSearchHit]:
+    async def search(
+        self,
+        vector: list[float],
+        top_k: int = 5,
+        *,
+        query_text: Optional[str] = None,
+        mode: SearchMode = "hybrid",
+    ) -> list[VectorSearchHit]:
+        # Vertex Matching Engine has no sparse/BM25 path; always dense.
+        _ = query_text, mode
         response = self._endpoint.find_neighbors(
             deployed_index_id=self._deployed_index_id,
             queries=[vector],

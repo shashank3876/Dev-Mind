@@ -1,0 +1,724 @@
+{
+  "dataset_version": 1,
+  "collection": "devmind_rag_eval",
+  "n_docs": 25,
+  "n_questions": 25,
+  "vector": {
+    "summary": {
+      "recall_at_5": 0.98,
+      "citation_accuracy": 0.96,
+      "answer_correctness": 0.98
+    },
+    "questions": [
+      {
+        "id": "q01",
+        "question": "What CHUNK_SIZE and CHUNK_OVERLAP does DevMind use for RAG?",
+        "retrieved_doc_ids": [
+          "chunking",
+          "embeddings-vertex",
+          "hybrid-rag",
+          "polyglot",
+          "exact-token-bm25"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q02",
+        "question": "Which local embedding model and vector size does DevMind use?",
+        "retrieved_doc_ids": [
+          "embeddings-vertex",
+          "embeddings-local",
+          "chunking",
+          "polyglot",
+          "exact-token-bm25"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 0.5,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q03",
+        "question": "What Vertex embedding model is used and what is its dimension?",
+        "retrieved_doc_ids": [
+          "embeddings-vertex",
+          "embeddings-local",
+          "llm-providers",
+          "vector-stores",
+          "exact-token-bm25"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q04",
+        "question": "How does hybrid RAG fuse dense and BM25 results?",
+        "retrieved_doc_ids": [
+          "hybrid-rag",
+          "vector-stores",
+          "qdrant-ports",
+          "failure-modes",
+          "ingest-api"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q05",
+        "question": "How are RAG citations sent to the frontend during chat?",
+        "retrieved_doc_ids": [
+          "citations",
+          "ingest-api",
+          "chat-flow",
+          "failure-modes",
+          "sse-protocol"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q06",
+        "question": "What happens to chat if Qdrant is unreachable?",
+        "retrieved_doc_ids": [
+          "failure-modes",
+          "chat-flow",
+          "citations",
+          "sse-protocol",
+          "qdrant-ports"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q07",
+        "question": "Describe the PR review webhook pipeline from GitHub to comment.",
+        "retrieved_doc_ids": [
+          "pr-pipeline",
+          "gateway-go",
+          "job-reliability",
+          "polyglot",
+          "review-prompt"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q08",
+        "question": "Why is the webhook gateway written in Go?",
+        "retrieved_doc_ids": [
+          "gateway-go",
+          "failure-modes",
+          "chat-flow",
+          "exact-token-bm25",
+          "pr-pipeline"
+        ],
+        "recall_at_5": 0.5,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q09",
+        "question": "What is the Google OAuth callback path pattern?",
+        "retrieved_doc_ids": [
+          "auth-oauth",
+          "gateway-go",
+          "deployment",
+          "memory",
+          "sse-protocol"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q10",
+        "question": "Which HTTP status is returned when the free chat quota is exceeded?",
+        "retrieved_doc_ids": [
+          "billing",
+          "chat-flow",
+          "failure-modes",
+          "citations",
+          "sse-protocol"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q11",
+        "question": "Does Vertex vector store support BM25 hybrid search?",
+        "retrieved_doc_ids": [
+          "vector-stores",
+          "hybrid-rag",
+          "qdrant-ports",
+          "embeddings-vertex",
+          "exact-token-bm25"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q12",
+        "question": "Which LLM providers does DevMind support?",
+        "retrieved_doc_ids": [
+          "polyglot",
+          "llm-providers",
+          "auth-oauth",
+          "embeddings-vertex",
+          "deployment"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 0.5,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q13",
+        "question": "What SSE markers wrap context count and stream completion?",
+        "retrieved_doc_ids": [
+          "sse-protocol",
+          "citations",
+          "chat-flow",
+          "failure-modes",
+          "chunking"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q14",
+        "question": "What is webhook_jobs_dlq used for?",
+        "retrieved_doc_ids": [
+          "exact-token-bm25",
+          "gateway-go",
+          "pr-pipeline",
+          "job-reliability",
+          "failure-modes"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 0.5
+      },
+      {
+        "id": "q15",
+        "question": "Name the Cloud Run services used in production.",
+        "retrieved_doc_ids": [
+          "deployment",
+          "redis-queue",
+          "polyglot",
+          "scale-path",
+          "frontend-proxy"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q16",
+        "question": "What does POST /ingest store in Qdrant payloads for citations?",
+        "retrieved_doc_ids": [
+          "ingest-api",
+          "citations",
+          "qdrant-ports",
+          "vector-stores",
+          "failure-modes"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q17",
+        "question": "Where does FastAPI load history from when the client omits history?",
+        "retrieved_doc_ids": [
+          "memory",
+          "chat-flow",
+          "sse-protocol",
+          "qdrant-ports",
+          "ingest-api"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q18",
+        "question": "What QUEUE_BACKEND values are used for local vs GCP?",
+        "retrieved_doc_ids": [
+          "redis-queue",
+          "deployment",
+          "vector-stores",
+          "scale-path",
+          "embeddings-local"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q19",
+        "question": "What HTTP status does an invalid webhook signature return?",
+        "retrieved_doc_ids": [
+          "gateway-go",
+          "failure-modes",
+          "pr-pipeline",
+          "job-reliability",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q20",
+        "question": "What scale changes are planned around 10k users?",
+        "retrieved_doc_ids": [
+          "scale-path",
+          "billing",
+          "polyglot",
+          "llm-providers",
+          "pr-pipeline"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q21",
+        "question": "What severity labels appear in PR review output?",
+        "retrieved_doc_ids": [
+          "review-prompt",
+          "pr-pipeline",
+          "job-reliability",
+          "redis-queue",
+          "citations"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q22",
+        "question": "Which languages make up the DevMind monorepo?",
+        "retrieved_doc_ids": [
+          "polyglot",
+          "chunking",
+          "embeddings-vertex",
+          "auth-oauth",
+          "exact-token-bm25"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q23",
+        "question": "What port does local Qdrant use and what is QDRANT_URL?",
+        "retrieved_doc_ids": [
+          "qdrant-ports",
+          "failure-modes",
+          "vector-stores",
+          "ingest-api",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q24",
+        "question": "Where does Vite proxy /api requests in local development?",
+        "retrieved_doc_ids": [
+          "frontend-proxy",
+          "redis-queue",
+          "auth-oauth",
+          "polyglot",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q25",
+        "question": "Why does FREE_CHAT_LIMIT benefit from lexical BM25 retrieval?",
+        "retrieved_doc_ids": [
+          "exact-token-bm25",
+          "billing",
+          "chat-flow",
+          "chunking",
+          "citations"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      }
+    ]
+  },
+  "hybrid": {
+    "summary": {
+      "recall_at_5": 1.0,
+      "citation_accuracy": 0.96,
+      "answer_correctness": 0.98
+    },
+    "questions": [
+      {
+        "id": "q01",
+        "question": "What CHUNK_SIZE and CHUNK_OVERLAP does DevMind use for RAG?",
+        "retrieved_doc_ids": [
+          "chunking",
+          "polyglot",
+          "hybrid-rag",
+          "embeddings-vertex",
+          "vector-stores"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q02",
+        "question": "Which local embedding model and vector size does DevMind use?",
+        "retrieved_doc_ids": [
+          "embeddings-local",
+          "embeddings-vertex",
+          "chunking",
+          "deployment",
+          "qdrant-ports"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q03",
+        "question": "What Vertex embedding model is used and what is its dimension?",
+        "retrieved_doc_ids": [
+          "embeddings-vertex",
+          "embeddings-local",
+          "vector-stores",
+          "llm-providers",
+          "chunking"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q04",
+        "question": "How does hybrid RAG fuse dense and BM25 results?",
+        "retrieved_doc_ids": [
+          "hybrid-rag",
+          "vector-stores",
+          "qdrant-ports",
+          "failure-modes",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q05",
+        "question": "How are RAG citations sent to the frontend during chat?",
+        "retrieved_doc_ids": [
+          "citations",
+          "ingest-api",
+          "chat-flow",
+          "failure-modes",
+          "sse-protocol"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q06",
+        "question": "What happens to chat if Qdrant is unreachable?",
+        "retrieved_doc_ids": [
+          "failure-modes",
+          "chat-flow",
+          "qdrant-ports",
+          "sse-protocol",
+          "vector-stores"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q07",
+        "question": "Describe the PR review webhook pipeline from GitHub to comment.",
+        "retrieved_doc_ids": [
+          "pr-pipeline",
+          "job-reliability",
+          "gateway-go",
+          "frontend-proxy",
+          "failure-modes"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q08",
+        "question": "Why is the webhook gateway written in Go?",
+        "retrieved_doc_ids": [
+          "gateway-go",
+          "failure-modes",
+          "pr-pipeline",
+          "polyglot",
+          "billing"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q09",
+        "question": "What is the Google OAuth callback path pattern?",
+        "retrieved_doc_ids": [
+          "auth-oauth",
+          "gateway-go",
+          "citations",
+          "deployment",
+          "memory"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q10",
+        "question": "Which HTTP status is returned when the free chat quota is exceeded?",
+        "retrieved_doc_ids": [
+          "billing",
+          "failure-modes",
+          "chat-flow",
+          "citations",
+          "gateway-go"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q11",
+        "question": "Does Vertex vector store support BM25 hybrid search?",
+        "retrieved_doc_ids": [
+          "vector-stores",
+          "hybrid-rag",
+          "qdrant-ports",
+          "embeddings-vertex",
+          "llm-providers"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q12",
+        "question": "Which LLM providers does DevMind support?",
+        "retrieved_doc_ids": [
+          "deployment",
+          "polyglot",
+          "llm-providers",
+          "pr-pipeline",
+          "vector-stores"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 0.5,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q13",
+        "question": "What SSE markers wrap context count and stream completion?",
+        "retrieved_doc_ids": [
+          "chat-flow",
+          "sse-protocol",
+          "failure-modes",
+          "citations",
+          "chunking"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 0.5,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q14",
+        "question": "What is webhook_jobs_dlq used for?",
+        "retrieved_doc_ids": [
+          "exact-token-bm25",
+          "polyglot",
+          "gateway-go",
+          "job-reliability",
+          "review-prompt"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 0.5
+      },
+      {
+        "id": "q15",
+        "question": "Name the Cloud Run services used in production.",
+        "retrieved_doc_ids": [
+          "deployment",
+          "frontend-proxy",
+          "redis-queue",
+          "gateway-go",
+          "embeddings-local"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q16",
+        "question": "What does POST /ingest store in Qdrant payloads for citations?",
+        "retrieved_doc_ids": [
+          "ingest-api",
+          "vector-stores",
+          "qdrant-ports",
+          "citations",
+          "embeddings-vertex"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q17",
+        "question": "Where does FastAPI load history from when the client omits history?",
+        "retrieved_doc_ids": [
+          "memory",
+          "chat-flow",
+          "sse-protocol",
+          "deployment",
+          "vector-stores"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q18",
+        "question": "What QUEUE_BACKEND values are used for local vs GCP?",
+        "retrieved_doc_ids": [
+          "redis-queue",
+          "vector-stores",
+          "embeddings-local",
+          "deployment",
+          "review-prompt"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q19",
+        "question": "What HTTP status does an invalid webhook signature return?",
+        "retrieved_doc_ids": [
+          "gateway-go",
+          "failure-modes",
+          "memory",
+          "job-reliability",
+          "pr-pipeline"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q20",
+        "question": "What scale changes are planned around 10k users?",
+        "retrieved_doc_ids": [
+          "scale-path",
+          "billing",
+          "llm-providers",
+          "auth-oauth",
+          "review-prompt"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q21",
+        "question": "What severity labels appear in PR review output?",
+        "retrieved_doc_ids": [
+          "pr-pipeline",
+          "review-prompt",
+          "job-reliability",
+          "redis-queue",
+          "embeddings-vertex"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q22",
+        "question": "Which languages make up the DevMind monorepo?",
+        "retrieved_doc_ids": [
+          "polyglot",
+          "deployment",
+          "chunking",
+          "embeddings-vertex",
+          "auth-oauth"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q23",
+        "question": "What port does local Qdrant use and what is QDRANT_URL?",
+        "retrieved_doc_ids": [
+          "qdrant-ports",
+          "vector-stores",
+          "failure-modes",
+          "ingest-api",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q24",
+        "question": "Where does Vite proxy /api requests in local development?",
+        "retrieved_doc_ids": [
+          "frontend-proxy",
+          "redis-queue",
+          "embeddings-local",
+          "auth-oauth",
+          "vector-stores"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      },
+      {
+        "id": "q25",
+        "question": "Why does FREE_CHAT_LIMIT benefit from lexical BM25 retrieval?",
+        "retrieved_doc_ids": [
+          "exact-token-bm25",
+          "billing",
+          "vector-stores",
+          "chunking",
+          "chat-flow"
+        ],
+        "recall_at_5": 1.0,
+        "citation_accuracy": 1.0,
+        "answer_correctness": 1.0
+      }
+    ]
+  }
+}

@@ -1,6 +1,4 @@
-import pytest
-
-from services.rag import CHUNK_OVERLAP, CHUNK_SIZE, chunk_text
+from services.rag import CHUNK_OVERLAP, CHUNK_SIZE, chunk_text, get_search_mode
 
 
 def test_chunk_text_empty():
@@ -31,3 +29,10 @@ def test_chunk_text_overlap_progresses():
     assert len(chunks) > 1
     # Each chunk after the first should share overlap with previous content.
     assert chunks[0][-3:] in chunks[1]
+
+
+def test_get_search_mode_reads_env(monkeypatch):
+    monkeypatch.setenv("RAG_SEARCH_MODE", "HYBRID")
+    assert get_search_mode() == "hybrid"
+    monkeypatch.setenv("RAG_SEARCH_MODE", "vector")
+    assert get_search_mode() == "vector"
