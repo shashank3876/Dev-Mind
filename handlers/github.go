@@ -6,8 +6,8 @@ import (
 	"devmind/gateway/models"
 	"devmind/gateway/queue"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strings"
 )
 
 type githubPayload struct {
@@ -29,11 +29,51 @@ type githubPayload struct {
 	} `json:"repository"`
 }
 
+func isReviewAction(action string) bool {
+	switch action {
+	case "opened", "reopened", "synchronize":
+		return true
+	default:
+		return false
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, body map[string]any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func BuildReviewJob(event, deliveryID, action string, p githubPayload) (models.Job, bool) {
+	if event != "pull_request" || p.PullRequest == nil || !isReviewAction(action) {
+		return models.Job{}, false
+	}
+	if p.Number == 0 || p.PullRequest.DiffURL == "" {
+		return models.Job{}, false
+	}
+
+	job := models.Job{
+		ID:          models.NewJobID(),
+		DeliveryID:  strings.TrimSpace(deliveryID),
+		Repo:        p.Repository.FullName,
+		PRNumber:    p.Number,
+		DiffURL:     p.PullRequest.DiffURL,
+		SHA:         p.PullRequest.Head.SHA,
+		Author:      p.PullRequest.User.Login,
+		Branch:      p.PullRequest.Head.Ref,
+		EventType:   event,
+		Attempt:     0,
+		MaxAttempts: models.DefaultMaxAttempts,
+		Status:      "queued",
+	}
+	job.Normalize()
+	return job, true
+}
+
 func GitHubWebhook(w http.ResponseWriter, r *http.Request) {
 	event := r.Header.Get("X-GitHub-Event")
 	if event != "pull_request" {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ignored")
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ignored", "reason": "event"})
 		return
 	}
 
@@ -43,29 +83,24 @@ func GitHubWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job := models.Job{
-		Repo:      p.Repository.FullName,
-		EventType: event,
+	job, ok := BuildReviewJob(event, r.Header.Get("X-GitHub-Delivery"), p.Action, p)
+	if !ok {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ignored", "reason": "action"})
+		return
 	}
 
-	if event == "pull_request" && p.PullRequest != nil {
-		switch p.Action {
-		case "opened", "reopened", "synchronize":
-		default:
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "ignored")
-			return
-		}
-		job.PRNumber = p.Number
-		job.DiffURL = p.PullRequest.DiffURL
-		job.SHA = p.PullRequest.Head.SHA
-		job.Author = p.PullRequest.User.Login
-		job.Branch = p.PullRequest.Head.Ref
+	accepted, err := queue.ReserveDedup(r.Context(), job)
+	if err != nil {
+		http.Error(w, "queue error", http.StatusInternalServerError)
+		return
 	}
-
-	if job.PRNumber == 0 || job.DiffURL == "" {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ignored")
+	if !accepted {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":          "duplicate",
+			"job_id":          job.ID,
+			"delivery_id":     job.DeliveryID,
+			"idempotency_key": job.IdempotencyKey,
+		})
 		return
 	}
 
@@ -74,6 +109,10 @@ func GitHubWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "ok")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":          "ok",
+		"job_id":          job.ID,
+		"delivery_id":     job.DeliveryID,
+		"idempotency_key": job.IdempotencyKey,
+	})
 }

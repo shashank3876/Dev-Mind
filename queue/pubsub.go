@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"cloud.google.com/go/pubsub"
+	"devmind/gateway/models"
 )
 
 var (
@@ -49,7 +50,15 @@ func publishPubSub(ctx context.Context, payload any) error {
 	if err != nil {
 		return err
 	}
-	result := pubsubTopic.Publish(ctx, &pubsub.Message{Data: data})
+	msg := &pubsub.Message{Data: data}
+	if job, ok := payload.(models.Job); ok {
+		msg.Attributes = map[string]string{
+			"job_id":          job.ID,
+			"delivery_id":     job.DeliveryID,
+			"idempotency_key": job.IdempotencyKey,
+		}
+	}
+	result := pubsubTopic.Publish(ctx, msg)
 	_, err = result.Get(ctx)
 	return err
 }

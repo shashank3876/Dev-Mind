@@ -1,4 +1,4 @@
-# DevMind Architecture
+ # DevMind Architecture
 
 This document explains how DevMind is structured, why services are split the way they are, and how the system handles failure and scale.
 
@@ -58,7 +58,7 @@ sequenceDiagram
   UI->>API: POST /api/chat (SSE)
   API->>DB: Load conversation history
   API->>AI: POST /chat (message + history)
-  AI->>VS: Vector search (RAG)
+  AI->>VS: Hybrid RAG search dense+BM25 RRF
   VS-->>AI: Top-k chunks + metadata
   AI-->>API: SSE [SOURCES] + tokens
   API-->>UI: Proxy SSE stream
@@ -71,6 +71,26 @@ Key details:
 2. RAG search runs before LLM streaming. If Qdrant is unavailable, the chat route logs a warning and continues without context (non-blocking failure).
 3. Retrieved sources are emitted as an SSE meta token (`[SOURCES:...]`) so the frontend can show citations without polluting the message body.
 
+## Hybrid RAG retrieval
+
+Qdrant collections use **named vectors**:
+
+| Name | Type | Role |
+|------|------|------|
+| `dense` | cosine dense | Semantic similarity (sentence-transformers / Vertex) |
+| `bm25` | sparse + `Modifier.IDF` | Lexical BM25-style match on chunk text |
+
+Query path (`RAG_SEARCH_MODE=hybrid`, default):
+
+1. Embed the query → dense prefetch (`top_k * 2`)
+2. Sparse-encode the query tokens → BM25 prefetch (`top_k * 2`)
+3. Fuse with Qdrant `Fusion.RRF`
+4. Return top-k payloads (`text`, `source`, `doc_id`, `score`) for citations
+
+`RAG_SEARCH_MODE=vector` skips sparse prefetch and searches `dense` only (baseline for the eval harness). Vertex Matching Engine has no sparse path and always falls back to dense.
+
+Related files: `ai-backend/services/vectorstore/qdrant_store.py`, `sparse.py`, `rank_fusion.py`, `services/rag.py`, `scripts/eval_rag.py`.
+
 ## PR review flow
 
 ```mermaid
@@ -82,12 +102,17 @@ sequenceDiagram
   participant AI as LLM_Provider
 
   GH->>GW: POST /webhook/github
-  GW->>GW: Verify HMAC signature
-  GW->>Q: Enqueue review job
-  W->>Q: Poll/subscribe for job
-  W->>GH: Fetch PR diff
-  W->>AI: Stream review (structured prompt)
-  W->>GH: Post review comment
+  GW->>GW: Verify HMAC + dedup delivery/SHA
+  GW->>Q: Enqueue job (id, delivery_id, idempotency_key)
+  W->>Q: Claim job (BRPOPLPUSH or Pub/Sub push)
+  alt already succeeded
+    W-->>Q: Ack duplicate
+  else process
+    W->>GH: Fetch PR diff
+    W->>AI: Review (in-process retries + exp backoff)
+    W->>GH: Post review comment
+    W->>W: Mark succeeded or retry/DLQ
+  end
 ```
 
 Key details:
@@ -95,6 +120,8 @@ Key details:
 1. **Signature verification** happens in Go middleware before any job is enqueued — invalid webhooks are rejected with 401.
 2. The queue decouples webhook receipt from LLM processing, so slow reviews never cause GitHub webhook timeouts.
 3. Reviews use a structured markdown prompt with severity labels (Critical / Suggestion / Nit) for consistent output.
+4. **Job reliability** — each job has an ID, GitHub `X-GitHub-Delivery` dedup, and `repo#pr@sha` idempotency. Redis uses a processing list + delayed retry ZSET + `webhook_jobs_dlq`. Pub/Sub returns 503 on retryable failure and forwards to `devmind-pr-jobs-dlq` after 5 deliveries. Worker status lives in `jobs.db` (`GET /jobs/{id}`).
+5. **  shutdown** — gateway `http.Server.Shutdown`; worker finishes the in-flight review before exiting. Redis in-flight jobs are requeued on restart.
 
 ## Failure modes
 
@@ -104,14 +131,17 @@ Key details:
 | LLM provider timeout | SSE stream ends with error; partial response may be saved |
 | Invalid webhook signature | 401 response; no job enqueued |
 | Monthly chat quota exceeded | 402 from api-server before reaching ai-backend |
-| Worker crash mid-review | Job can be retried from queue (at-least-once delivery) |
+| Worker crash mid-review | Redis: job stays in `webhook_jobs_processing` and is requeued on restart. Pub/Sub: 503 redelivers until max attempts, then DLQ. Succeeded SHA/delivery is skipped (idempotent). |
+| Transient GitHub/LLM error | In-process retries (3) with exponential backoff + jitter, then queue-level retry up to `max_attempts` (5) |
+| Job exceeds max attempts | Written to dead-letter queue (`webhook_jobs_dlq` / `devmind-pr-jobs-dlq`); status `dead_letter` |
+| Duplicate GitHub webhook | Same `X-GitHub-Delivery` or `repo#pr@sha` returns 200 `duplicate` and does not post another comment |
 
 ## Data stores
 
 | Store | Used for | Tradeoff |
 |-------|----------|----------|
 | **SQLite** (via Drizzle) | Users, sessions, conversations, billing | Simple for portfolio/single-instance; would migrate to Postgres for multi-instance |
-| **Qdrant** | Vector embeddings for RAG | Self-hosted or cloud; Vertex Vector Search available as alternative |
+| **Qdrant** | Hybrid dense + BM25 sparse RAG | Self-hosted or cloud; Vertex Vector Search available as dense-only alternative |
 | **Redis / PubSub** | PR review job queue | Redis for local dev; Google Pub/Sub in production on GCP |
 
 ## Scale path (10k users)
@@ -142,7 +172,7 @@ Secrets are loaded from **Secret Manager** (`USE_GCP_SECRETS=true`). Structured 
 |----------|--------|-------------|-----------|
 | Monorepo | pnpm + Go module + Python venv | Separate repos | Easier to demo as one project; shared OpenAPI spec |
 | Chat persistence | Express api-server (SQLite) | Direct FastAPI SQLite | Keeps auth/quota/billing in one layer |
-| RAG store | Qdrant | Pinecone, pgvector | Self-hostable, good local dev experience |
+| RAG store | Qdrant hybrid (dense+BM25 RRF) | Dense-only / Pinecone / pgvector | Lexical + semantic recall; `RAG_SEARCH_MODE=vector` keeps an A/B baseline |
 | LLM abstraction | Provider interface in Python | LiteLLM | Lightweight; only 4 providers needed |
 | PR output format | Structured markdown | JSON schema output | Simpler to render; severity parsed on frontend |
 
@@ -151,6 +181,8 @@ Secrets are loaded from **Secret Manager** (`USE_GCP_SECRETS=true`). Structured 
 - Chat route: `ai-backend/routes/chat.py`
 - RAG service: `ai-backend/services/rag.py`
 - Webhook middleware: `middleware/verify.go`
+- Job model / dedup: `models/job.go`, `handlers/github.go`, `queue/`
+- Worker jobs: `ai-backend/worker.py`, `ai-backend/services/jobs.py`, `ai-backend/services/job_store.py`
 - Review prompts: `ai-backend/services/review_prompt.py`
 - Chat proxy: `artifacts/api-server/src/routes/chat.ts`
 - Frontend hooks: `artifacts/frontend/src/hooks/use-chat.ts`

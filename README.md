@@ -14,7 +14,7 @@ Most portfolio chat apps stop at a prompt box. I wanted to demonstrate how real 
 
 - **Polyglot monorepo** — Go webhook gateway, Python FastAPI (LLM + RAG), Express api-server (auth/billing), React frontend
 - **Event-driven PR pipeline** — GitHub webhook → Redis/PubSub queue → background worker → GitHub comment
-- **RAG with source citations** — Qdrant vector search injects context into chat; users can inspect retrieved chunks
+- **Hybrid RAG with source citations** — Qdrant dense + BM25 sparse search fused with RRF; users can inspect retrieved chunks
 - **Multi-provider LLM routing** — Claude, Gemini, OpenAI, and Vertex AI via a pluggable provider interface
 - **Product features** — OAuth (Google/GitHub), conversation history, usage quotas, Razorpay billing
 - **GCP deployment** — Cloud Run services with Secret Manager, structured logging, and Cloud Build CI
@@ -31,7 +31,7 @@ Add PNGs to [`docs/screenshots/`](docs/screenshots/) and embed them here:
 
 - **Service boundaries** — Why Go handles webhooks (fast, static binary) while Python owns LLM/RAG (rich SDK ecosystem)
 - **Reliability** — Webhook signature verification, non-blocking RAG failures, async workers with retries
-- **RAG design** — Chunking strategy, embedding provider abstraction, source metadata for user transparency
+- **RAG design** — Hybrid dense+BM25 retrieval with RRF, chunking strategy, embedding provider abstraction, citation metadata, and a scored eval harness
 - **Scale path** — Connection pooling, rate limits, dedicated worker pools, embedding cache at 10k users
 
 ## Tech stack
@@ -46,34 +46,7 @@ Add PNGs to [`docs/screenshots/`](docs/screenshots/) and embed them here:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  subgraph frontend [Frontend]
-    UI[React Chat UI]
-  end
-
-  subgraph ai [AI Backend]
-    API[FastAPI]
-    RAG[Qdrant RAG]
-    MEM[SQLite Memory]
-    LLM[LLM Providers]
-  end
-
-  subgraph automation [Automation Pipeline]
-    GH[GitHub Webhooks]
-    GW[Go Gateway]
-    REDIS[(Redis)]
-    WRK[Python Worker]
-  end
-
-  UI -->|POST /chat SSE| API
-  API --> RAG
-  API --> MEM
-  API --> LLM
-  GH --> GW --> REDIS --> WRK
-  WRK --> LLM
-  WRK -->|Post comment| GH
-```
+![DevMind system architecture](docs/screenshots/architecture.png)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flows, failure modes, and tradeoffs.
 
@@ -85,10 +58,63 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flows, failure modes, and 
 ## Features
 
 - **Streaming chat** — Real-time responses over Server-Sent Events (SSE) with support for Claude, Gemini, and OpenAI
-- **RAG context** — Ingest documents into Qdrant and retrieve relevant chunks during chat
+- **Hybrid RAG context** — Ingest documents into Qdrant; retrieve with dense + BM25 RRF (or vector-only baseline via `RAG_SEARCH_MODE`)
 - **Conversation memory** — Per-user chat history stored in SQLite
 - **Automated PR reviews** — GitHub webhooks trigger background workers that fetch diffs, run LLM reviews, and post comments
 - **Multi-provider LLM routing** — Switch providers via environment config or per-request selection
+
+## Hybrid RAG (Milestone 1)
+
+Chat retrieval is no longer dense-only. Qdrant stores a **named dense vector** plus a **BM25-style sparse vector** per chunk. At query time both lists are fetched and fused with **Reciprocal Rank Fusion (RRF)** so rare tokens (config keys, error codes) and semantic paraphrases both rank well.
+
+```mermaid
+flowchart LR
+  Q[User query] --> E[Dense embedding]
+  Q --> S[BM25 sparse encode]
+  E --> D[Qdrant dense prefetch]
+  S --> B[Qdrant BM25 prefetch]
+  D --> RRF[RRF fusion]
+  B --> RRF
+  RRF --> TopK[Top-k chunks + citations]
+  TopK --> LLM[LLM + SSE SOURCES]
+```
+
+| Mode | Env | Behavior |
+|------|-----|----------|
+| `hybrid` (default) | `RAG_SEARCH_MODE=hybrid` | Dense + BM25 prefetches → RRF |
+| `vector` | `RAG_SEARCH_MODE=vector` | Dense-only baseline (A/B compare) |
+
+**Note:** The first hybrid upsert recreates the Qdrant collection with the new schema — re-run `/ingest` (or the eval indexer) after upgrading.
+
+### Evaluation harness
+
+Golden set: **25 docs / 25 questions** in [`ai-backend/eval/rag_eval_dataset.json`](ai-backend/eval/rag_eval_dataset.json).
+
+| Metric | Meaning |
+|--------|---------|
+| **Recall@5** | Fraction of gold `doc_id`s found in the top-5 hits |
+| **Citation accuracy** | Top-1 gold hit = 1.0; gold appears later in top-5 = 0.5 |
+| **Answer correctness** | Fraction of expected answer keywords present in retrieved context (retrieval-grounded, no LLM judge) |
+
+```bash
+cd ai-backend && source .venv/bin/activate
+# Qdrant must be running on :6333
+python scripts/eval_rag.py --out eval/last_results.json
+```
+
+### Measured results (local, `all-MiniLM-L6-v2`)
+
+From [`ai-backend/eval/last_results.json`](ai-backend/eval/last_results.json):
+
+| Metric | Vector-only | Hybrid (dense+BM25 RRF) | Delta |
+|--------|-------------|-------------------------|-------|
+| Recall@5 | 98.0% | **100.0%** | **+2.0%** |
+| Citation accuracy | 96.0% | 96.0% | +0.0% |
+| Answer correctness | 98.0% | 98.0% | +0.0% |
+
+On this curated corpus dense search is already strong; hybrid closed the remaining Recall@5 gap (exact-token / multi-doc questions). Larger, noisier corpora typically widen the hybrid advantage on lexical identifiers.
+
+Unit tests: `ai-backend/tests/test_sparse_and_fusion.py`, `test_hybrid_search.py`, `test_rag_eval.py`.
 
 ## Project structure
 
@@ -103,6 +129,8 @@ Dev-Mind/
 │   ├── main.py             # API server
 │   ├── worker.py           # Background PR review worker
 │   ├── routes/             # chat, ingest, health
+│   ├── eval/               # RAG golden set + last eval results
+│   ├── scripts/eval_rag.py # Hybrid vs vector-only benchmark
 │   └── services/           # LLM, RAG, memory, GitHub
 ├── artifacts/
 │   ├── frontend/           # React + Vite chat UI
@@ -198,6 +226,7 @@ Then configure these in `.env`:
 | `VERTEX_MODEL` | Vertex model ID (default `gemini-2.0-flash-001`) |
 | `EMBEDDING_PROVIDER` | `local` (default) or `vertex` |
 | `VECTOR_STORE` | `qdrant` (default) or `vertex` |
+| `RAG_SEARCH_MODE` | `hybrid` (default) or `vector` dense-only baseline |
 | `USE_GCP_SECRETS` | `true` to load API keys from Secret Manager |
 | `USE_GCP_LOGGING` | `true` for structured JSON logs to Cloud Logging |
 

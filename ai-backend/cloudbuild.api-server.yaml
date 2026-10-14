@@ -34,7 +34,6 @@ steps:
           --platform=managed \
           --allow-unauthenticated \
           --service-account=devmind-ai@${PROJECT_ID}.iam.gserviceaccount.com \
-          --add-cloudsql-instances=${PROJECT_ID}:${_REGION}:devmind-pg \
           --cpu=1 \
           --memory=512Mi \
           --min-instances=0 \

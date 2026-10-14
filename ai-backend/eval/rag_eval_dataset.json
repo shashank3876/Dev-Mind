@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "description": "DevMind RAG golden set for hybrid vs vector-only retrieval evaluation.",
+  "corpus": [
+    {
+      "doc_id": "chunking",
+      "source": "docs/rag-chunking.md",
+      "text": "DevMind splits ingested documents into overlapping character chunks before embedding. The default CHUNK_SIZE is 700 characters with CHUNK_OVERLAP of 100 characters. Overlap preserves sentence continuity across boundaries so retrieval does not drop mid-thought context."
+    },
+    {
+      "doc_id": "embeddings-local",
+      "source": "docs/embeddings.md",
+      "text": "The default embedding provider is local sentence-transformers. Local embeddings use the all-MiniLM-L6-v2 model with a vector size of 384 dimensions. This keeps local development free of cloud embedding quotas."
+    },
+    {
+      "doc_id": "embeddings-vertex",
+      "source": "docs/embeddings-vertex.md",
+      "text": "When EMBEDDING_PROVIDER=vertex, DevMind uses Vertex AI text-embedding-004. Vertex embeddings produce 768-dimensional vectors and are stored in a separate Qdrant collection named devmind_docs_vertex to avoid mixing dimensions."
+    },
+    {
+      "doc_id": "hybrid-rag",
+      "source": "docs/hybrid-rag.md",
+      "text": "Hybrid RAG combines dense cosine search over named dense vectors with BM25-style sparse lexical search. Qdrant fuses both ranked lists using Reciprocal Rank Fusion (RRF). Set RAG_SEARCH_MODE=hybrid for fusion or RAG_SEARCH_MODE=vector for dense-only baseline."
+    },
+    {
+      "doc_id": "citations",
+      "source": "docs/citations.md",
+      "text": "Chat responses emit retrieved chunks as an SSE meta token [SOURCES:...]. Each source payload may include text, source path, score, and doc_id. The frontend renders citations so users can verify which passages grounded the answer."
+    },
+    {
+      "doc_id": "chat-flow",
+      "source": "docs/chat-flow.md",
+      "text": "The Express api-server authenticates the user, checks chat quota, loads conversation history, and proxies an SSE stream from FastAPI. FastAPI runs RAG search first, then streams LLM tokens. If Qdrant is unavailable, chat continues without context and logs a warning."
+    },
+    {
+      "doc_id": "pr-pipeline",
+      "source": "docs/pr-pipeline.md",
+      "text": "GitHub webhooks hit the Go gateway which verifies HMAC signatures, then enqueues jobs on Redis or Pub/Sub. The Python worker fetches the PR diff, calls the LLM review prompt, and posts a structured comment with Critical, Suggestion, and Nit severity labels."
+    },
+    {
+      "doc_id": "gateway-go",
+      "source": "docs/gateway.md",
+      "text": "The webhook gateway is written in Go using the chi router. Go was chosen for a small static binary and fast cold starts on Cloud Run. Signature verification runs in middleware before any job is enqueued; invalid signatures return HTTP 401."
+    },
+    {
+      "doc_id": "auth-oauth",
+      "source": "docs/auth.md",
+      "text": "DevMind supports Google and GitHub OAuth. The callback URL is APP_ORIGIN plus /api/auth/{provider}/callback. Sessions are stored with connect-pg-simple in Postgres. SESSION_SECRET and OAuth client credentials are required environment variables."
+    },
+    {
+      "doc_id": "billing",
+      "source": "docs/billing.md",
+      "text": "Free users have a monthly chat quota controlled by FREE_CHAT_LIMIT or DB app_settings. Paid upgrades use Razorpay. When the quota is exceeded the api-server returns HTTP 402 before the request reaches the AI backend."
+    },
+    {
+      "doc_id": "vector-stores",
+      "source": "docs/vector-stores.md",
+      "text": "VECTOR_STORE selects qdrant or vertex. Qdrant is the default for local development. Vertex Matching Engine is optional for GCP production and does not support BM25 hybrid search, so it falls back to dense-only retrieval."
+    },
+    {
+      "doc_id": "llm-providers",
+      "source": "docs/llm-providers.md",
+      "text": "Supported LLM providers are claude, gemini, openai, and vertex. DEFAULT_LLM_PROVIDER picks the default. Clients may override provider per chat request. Claude uses claude-sonnet-4-5 by default when ANTHROPIC_API_KEY is set."
+    },
+    {
+      "doc_id": "sse-protocol",
+      "source": "docs/sse.md",
+      "text": "Streaming uses Server-Sent Events. Before tokens, the backend may emit [CONTEXT:N] and [SOURCES:json]. The stream ends with [DONE]. Partial assistant replies may still be persisted if the client disconnects after tokens were produced."
+    },
+    {
+      "doc_id": "job-reliability",
+      "source": "docs/jobs.md",
+      "text": "PR review jobs carry an ID, GitHub delivery dedup key, and repo#pr@sha idempotency key. Redis uses a processing list plus delayed retry ZSET and webhook_jobs_dlq. After five failed attempts a job is dead-lettered."
+    },
+    {
+      "doc_id": "deployment",
+      "source": "docs/deployment.md",
+      "text": "Production deploys to Google Cloud Run: devmind-frontend, devmind-api-server, devmind-ai-backend, devmind-gateway, and devmind-ai-worker. Secrets load from Secret Manager when USE_GCP_SECRETS=true. Cloud Build configs live under ai-backend/cloudbuild*.yaml."
+    },
+    {
+      "doc_id": "ingest-api",
+      "source": "docs/ingest-api.md",
+      "text": "POST /ingest accepts text and optional metadata, chunks the text, embeds each chunk, and upserts points into Qdrant. Metadata fields such as source and doc_id are stored in the payload and returned during search for citations."
+    },
+    {
+      "doc_id": "memory",
+      "source": "docs/memory.md",
+      "text": "When the client does not send history, FastAPI loads prior turns from a SQLite-backed memory module keyed by user_id. The api-server path typically supplies history from Postgres conversations instead of SQLite."
+    },
+    {
+      "doc_id": "redis-queue",
+      "source": "docs/redis-queue.md",
+      "text": "Local development uses QUEUE_BACKEND=redis with REDIS_URL pointing at localhost:6379. Production on GCP switches QUEUE_BACKEND to pubsub with topic devmind-pr-jobs and a companion dead-letter topic."
+    },
+    {
+      "doc_id": "failure-modes",
+      "source": "docs/failure-modes.md",
+      "text": "If Qdrant is unreachable, chat continues without RAG context. Invalid webhook signatures return 401. Monthly chat quota exceeded returns 402. LLM timeouts end the SSE stream with an error while partial text may remain saved."
+    },
+    {
+      "doc_id": "scale-path",
+      "source": "docs/scale.md",
+      "text": "At roughly 10k users the scale path includes migrating session data from SQLite to Postgres, adding per-user rate limits, horizontally scaling workers, caching query embeddings in Redis, and serving the frontend via CDN."
+    },
+    {
+      "doc_id": "review-prompt",
+      "source": "docs/review-prompt.md",
+      "text": "PR reviews use a structured markdown prompt. Findings are labeled Critical for security or correctness bugs, Suggestion for maintainability improvements, and Nit for style nits. The frontend parses these severity labels for display."
+    },
+    {
+      "doc_id": "polyglot",
+      "source": "docs/polyglot.md",
+      "text": "DevMind is a polyglot monorepo: Go for webhooks, Python for LLM and RAG, TypeScript Express for auth and billing, and React for the UI. Shared OpenAPI types keep the frontend and api-server aligned."
+    },
+    {
+      "doc_id": "qdrant-ports",
+      "source": "docs/qdrant.md",
+      "text": "Local Qdrant typically listens on port 6333. Configure QDRANT_URL=http://localhost:6333 and optionally QDRANT_API_KEY for Qdrant Cloud. Hybrid collections store named dense vectors and a bm25 sparse vector with IDF modifier."
+    },
+    {
+      "doc_id": "frontend-proxy",
+      "source": "docs/frontend-proxy.md",
+      "text": "In local Vite development, /api requests proxy to the Express api-server via VITE_API_PROXY_TARGET defaulting to http://localhost:3001. The production nginx container proxies /api to API_SERVER_URL on Cloud Run."
+    },
+    {
+      "doc_id": "exact-token-bm25",
+      "source": "docs/bm25-tokens.md",
+      "text": "Lexical retrieval helps when queries include rare identifiers such as webhook_jobs_dlq, FREE_CHAT_LIMIT, or all-MiniLM-L6-v2. Dense embeddings alone often miss exact token matches for configuration keys and error codes."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "question": "What CHUNK_SIZE and CHUNK_OVERLAP does DevMind use for RAG?",
+      "relevant_doc_ids": ["chunking"],
+      "answer_keywords": ["700", "100"]
+    },
+    {
+      "id": "q02",
+      "question": "Which local embedding model and vector size does DevMind use?",
+      "relevant_doc_ids": ["embeddings-local"],
+      "answer_keywords": ["all-MiniLM-L6-v2", "384"]
+    },
+    {
+      "id": "q03",
+      "question": "What Vertex embedding model is used and what is its dimension?",
+      "relevant_doc_ids": ["embeddings-vertex"],
+      "answer_keywords": ["text-embedding-004", "768"]
+    },
+    {
+      "id": "q04",
+      "question": "How does hybrid RAG fuse dense and BM25 results?",
+      "relevant_doc_ids": ["hybrid-rag"],
+      "answer_keywords": ["Reciprocal Rank Fusion", "RRF"]
+    },
+    {
+      "id": "q05",
+      "question": "How are RAG citations sent to the frontend during chat?",
+      "relevant_doc_ids": ["citations", "sse-protocol"],
+      "answer_keywords": ["SOURCES", "SSE"]
+    },
+    {
+      "id": "q06",
+      "question": "What happens to chat if Qdrant is unreachable?",
+      "relevant_doc_ids": ["chat-flow", "failure-modes"],
+      "answer_keywords": ["without", "context"]
+    },
+    {
+      "id": "q07",
+      "question": "Describe the PR review webhook pipeline from GitHub to comment.",
+      "relevant_doc_ids": ["pr-pipeline"],
+      "answer_keywords": ["gateway", "worker", "comment"]
+    },
+    {
+      "id": "q08",
+      "question": "Why is the webhook gateway written in Go?",
+      "relevant_doc_ids": ["gateway-go", "polyglot"],
+      "answer_keywords": ["static binary", "cold starts"]
+    },
+    {
+      "id": "q09",
+      "question": "What is the Google OAuth callback path pattern?",
+      "relevant_doc_ids": ["auth-oauth"],
+      "answer_keywords": ["/api/auth", "callback"]
+    },
+    {
+      "id": "q10",
+      "question": "Which HTTP status is returned when the free chat quota is exceeded?",
+      "relevant_doc_ids": ["billing", "failure-modes"],
+      "answer_keywords": ["402"]
+    },
+    {
+      "id": "q11",
+      "question": "Does Vertex vector store support BM25 hybrid search?",
+      "relevant_doc_ids": ["vector-stores"],
+      "answer_keywords": ["falls back", "dense-only"]
+    },
+    {
+      "id": "q12",
+      "question": "Which LLM providers does DevMind support?",
+      "relevant_doc_ids": ["llm-providers"],
+      "answer_keywords": ["claude", "gemini", "openai", "vertex"]
+    },
+    {
+      "id": "q13",
+      "question": "What SSE markers wrap context count and stream completion?",
+      "relevant_doc_ids": ["sse-protocol", "citations"],
+      "answer_keywords": ["CONTEXT", "DONE"]
+    },
+    {
+      "id": "q14",
+      "question": "What is webhook_jobs_dlq used for?",
+      "relevant_doc_ids": ["job-reliability", "exact-token-bm25"],
+      "answer_keywords": ["dead-letter", "dead letter"]
+    },
+    {
+      "id": "q15",
+      "question": "Name the Cloud Run services used in production.",
+      "relevant_doc_ids": ["deployment"],
+      "answer_keywords": ["devmind-frontend", "devmind-api-server", "devmind-ai-backend"]
+    },
+    {
+      "id": "q16",
+      "question": "What does POST /ingest store in Qdrant payloads for citations?",
+      "relevant_doc_ids": ["ingest-api"],
+      "answer_keywords": ["source", "doc_id"]
+    },
+    {
+      "id": "q17",
+      "question": "Where does FastAPI load history from when the client omits history?",
+      "relevant_doc_ids": ["memory"],
+      "answer_keywords": ["SQLite", "user_id"]
+    },
+    {
+      "id": "q18",
+      "question": "What QUEUE_BACKEND values are used for local vs GCP?",
+      "relevant_doc_ids": ["redis-queue"],
+      "answer_keywords": ["redis", "pubsub"]
+    },
+    {
+      "id": "q19",
+      "question": "What HTTP status does an invalid webhook signature return?",
+      "relevant_doc_ids": ["gateway-go", "failure-modes"],
+      "answer_keywords": ["401"]
+    },
+    {
+      "id": "q20",
+      "question": "What scale changes are planned around 10k users?",
+      "relevant_doc_ids": ["scale-path"],
+      "answer_keywords": ["Postgres", "rate limits", "CDN"]
+    },
+    {
+      "id": "q21",
+      "question": "What severity labels appear in PR review output?",
+      "relevant_doc_ids": ["review-prompt", "pr-pipeline"],
+      "answer_keywords": ["Critical", "Suggestion", "Nit"]
+    },
+    {
+      "id": "q22",
+      "question": "Which languages make up the DevMind monorepo?",
+      "relevant_doc_ids": ["polyglot"],
+      "answer_keywords": ["Go", "Python", "TypeScript"]
+    },
+    {
+      "id": "q23",
+      "question": "What port does local Qdrant use and what is QDRANT_URL?",
+      "relevant_doc_ids": ["qdrant-ports"],
+      "answer_keywords": ["6333", "localhost"]
+    },
+    {
+      "id": "q24",
+      "question": "Where does Vite proxy /api requests in local development?",
+      "relevant_doc_ids": ["frontend-proxy"],
+      "answer_keywords": ["3001", "VITE_API_PROXY_TARGET"]
+    },
+    {
+      "id": "q25",
+      "question": "Why does FREE_CHAT_LIMIT benefit from lexical BM25 retrieval?",
+      "relevant_doc_ids": ["exact-token-bm25", "billing"],
+      "answer_keywords": ["exact token", "FREE_CHAT_LIMIT"]
+    }
+  ]
+}

@@ -55,14 +55,25 @@ async def get_or_create_pr(client: httpx.AsyncClient) -> dict:
 
 
 def _job_payload(pr: dict) -> dict:
+    from services.jobs import DEFAULT_MAX_ATTEMPTS, idempotency_key, new_job_id
+
+    repo = f"{OWNER}/{REPO}"
+    sha = pr["head"]["sha"]
+    number = pr["number"]
     return {
-        "repo": f"{OWNER}/{REPO}",
-        "pr_number": pr["number"],
+        "id": new_job_id(),
+        "delivery_id": f"manual-{new_job_id()}",
+        "idempotency_key": idempotency_key(repo, number, sha),
+        "repo": repo,
+        "pr_number": number,
         "diff_url": pr["diff_url"],
-        "sha": pr["head"]["sha"],
+        "sha": sha,
         "author": pr["user"]["login"],
         "branch": pr["head"]["ref"],
         "event_type": "pull_request",
+        "attempt": 0,
+        "max_attempts": DEFAULT_MAX_ATTEMPTS,
+        "status": "queued",
     }
 
 
