@@ -46,34 +46,7 @@ Add PNGs to [`docs/screenshots/`](docs/screenshots/) and embed them here:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  subgraph frontend [Frontend]
-    UI[React Chat UI]
-  end
-
-  subgraph ai [AI Backend]
-    API[FastAPI]
-    RAG[Hybrid RAG Qdrant]
-    MEM[SQLite Memory]
-    LLM[LLM Providers]
-  end
-
-  subgraph automation [Automation Pipeline]
-    GH[GitHub Webhooks]
-    GW[Go Gateway]
-    REDIS[(Redis)]
-    WRK[Python Worker]
-  end
-
-  UI -->|POST /chat SSE| API
-  API --> RAG
-  API --> MEM
-  API --> LLM
-  GH --> GW --> REDIS --> WRK
-  WRK --> LLM
-  WRK -->|Post comment| GH
-```
+![DevMind system architecture](docs/screenshots/architecture.png)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flows, failure modes, and tradeoffs.
 
