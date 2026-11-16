@@ -2,7 +2,7 @@
 substitutions:
   _REGION: us-central1
   _APP_ORIGIN: https://devmind-frontend-nvnmzcvgva-uc.a.run.app
-  _AI_BACKEND_URL: https://devmind-ai-backend-nvnmzcvgva-uc.a.run.app
+  _AI_BACKEND_URL: https://devmind-ai-backend-24602646156.us-central1.run.app
 
 steps:
   - name: gcr.io/cloud-builders/docker

@@ -94,7 +94,7 @@ steps:
       - --min-instances=0
       - --max-instances=2
       - --cpu-throttling
-      - --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},USE_GCP_SECRETS=true,USE_GCP_LOGGING=true,USE_GCP_TRACING=true,DEFAULT_LLM_PROVIDER=vertex,VERTEX_MODEL=gemini-2.5-flash
+      - --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${_REGION},USE_GCP_SECRETS=true,USE_GCP_LOGGING=true,USE_GCP_TRACING=false,DEFAULT_LLM_PROVIDER=vertex,VERTEX_MODEL=gemini-2.5-flash,EMBEDDING_PROVIDER=vertex,VECTOR_STORE=qdrant,RAG_SEARCH_MODE=hybrid
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud

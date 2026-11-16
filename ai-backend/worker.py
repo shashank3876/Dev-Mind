@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from services.redis_client import create_redis_client, load_env
+from services.rabbitmq_client import connect_rabbitmq, declare_topology, RABBIT_JOB_QUEUE
 
 load_env()
 
@@ -44,6 +45,7 @@ load_secrets()
 
 shutdown_event = asyncio.Event()
 _redis_task: asyncio.Task | None = None
+_rabbit_task: asyncio.Task | None = None
 
 
 def queue_backend() -> str:
@@ -140,20 +142,24 @@ async def lifespan(_app: FastAPI):
     init_db()
     store.init()
     logger.info("worker http listening queue_backend=%s", queue_backend())
-    if queue_backend() != "pubsub":
+    backend = queue_backend()
+    if backend == "redis":
         _redis_task = asyncio.create_task(redis_loop())
+    elif backend == "rabbitmq":
+        _rabbit_task = asyncio.create_task(rabbitmq_loop())
     yield
     shutdown_event.set()
-    if _redis_task:
-        try:
-            await asyncio.wait_for(_redis_task, timeout=35)
-        except asyncio.TimeoutError:
-            logger.warning("redis loop did not stop in time; cancelling")
-            _redis_task.cancel()
+    for task, name in ((_redis_task, "redis"), (_rabbit_task, "rabbitmq")):
+        if task:
             try:
-                await _redis_task
-            except asyncio.CancelledError:
-                pass
+                await asyncio.wait_for(task, timeout=35)
+            except asyncio.TimeoutError:
+                logger.warning("%s loop did not stop in time; cancelling", name)
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
     logger.info("worker shutdown complete")
 
 
@@ -208,6 +214,47 @@ async def pubsub_push(request: Request):
         {"status": result, "job_id": job["id"]},
         status_code=503,
     )
+
+
+async def rabbitmq_loop():
+    import json
+    import aio_pika
+    from services.rabbitmq_client import connect_rabbitmq, declare_topology
+
+    conn = await connect_rabbitmq()
+    async with conn:
+        channel = await conn.channel()
+        await channel.set_qos(prefetch_count=1)
+        queue = await declare_topology(channel)
+        logger.info("waiting for rabbitmq jobs on %s...", RABBIT_JOB_QUEUE)
+
+        async with queue.iterator() as q_iter:
+            async for message in q_iter:
+                if shutdown_event.is_set():
+                    break
+                async with message.process(requeue=False, ignore_processed=True):
+                    try:
+                        job = json.loads(message.body)
+                    except Exception as e:
+                        logger.error("poison rabbitmq payload rejected: %s", e)
+                        await message.reject(requeue=False)
+                        continue
+
+                    job = normalize_job(job)
+                    try:
+                        result, job = await process_job(job)
+                    except Exception as e:
+                        logger.error("unexpected process_job error: %s | job=%s", e, job)
+                        result = STATUS_DEAD_LETTER
+
+                    if result == STATUS_RETRYING:
+                        # Nack so RabbitMQ redelivers (DLX handles exhausted retries).
+                        await message.nack(requeue=True)
+                    elif result == STATUS_DEAD_LETTER:
+                        await message.reject(requeue=False)  # routes to DLX/DLQ
+                    # STATUS_SUCCEEDED / STATUS_DUPLICATE: ack (auto via context manager)
+
+    logger.info("rabbitmq loop stopped")
 
 
 async def _requeue_inflight(r) -> None:
@@ -305,8 +352,16 @@ async def redis_main():
 
 
 if __name__ == "__main__":
-    if queue_backend() == "pubsub":
+    backend = queue_backend()
+    if backend == "pubsub":
         port = int(os.environ.get("PORT", "8080"))
         uvicorn.run(app, host="0.0.0.0", port=port)
+    elif backend == "rabbitmq":
+        async def _rabbit_main():
+            init_db()
+            store.init()
+            _install_signal_handlers()
+            await rabbitmq_loop()
+        asyncio.run(_rabbit_main())
     else:
         asyncio.run(redis_main())

@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	BackendRedis  = "redis"
-	BackendPubSub = "pubsub"
+	BackendRedis    = "redis"
+	BackendPubSub   = "pubsub"
+	BackendRabbitMQ = "rabbitmq"
 )
 
 var backend string
@@ -32,16 +33,26 @@ func Init() {
 		}
 	case BackendRedis:
 		initRedis()
+	case BackendRabbitMQ:
+		initRabbitMQ()
+		// Optional Redis for dedup when REDIS_URL is set.
+		if strings.TrimSpace(os.Getenv("REDIS_URL")) != "" {
+			initRedis()
+		}
 	default:
-		log.Fatalf("unsupported QUEUE_BACKEND %q (use %q or %q)", backend, BackendRedis, BackendPubSub)
+		log.Fatalf("unsupported QUEUE_BACKEND %q (use %q, %q, or %q)", backend, BackendRedis, BackendPubSub, BackendRabbitMQ)
 	}
 }
 
 func Push(ctx context.Context, payload any) error {
-	if backend == BackendPubSub {
+	switch backend {
+	case BackendPubSub:
 		return publishPubSub(ctx, payload)
+	case BackendRabbitMQ:
+		return publishRabbitMQ(ctx, payload)
+	default:
+		return pushRedis(ctx, payload)
 	}
-	return pushRedis(ctx, payload)
 }
 
 // ReserveDedup returns false when this delivery or repo#pr@sha was already accepted.
