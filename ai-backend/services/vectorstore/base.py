@@ -31,5 +31,6 @@ class VectorStore(ABC):
         *,
         query_text: Optional[str] = None,
         mode: SearchMode = "hybrid",
+        filters: Optional[dict[str, Any]] = None,
     ) -> list[VectorSearchHit]:
         ...

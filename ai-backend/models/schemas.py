@@ -64,3 +64,23 @@ class ReviewResponse(BaseModel):
     review: str
     repo: str
     pr_number: int
+
+
+class DnaAnalyzeRequest(BaseModel):
+    evidence: dict[str, Any]
+    user_id: str = "anonymous"
+    provider: Optional[LLMProviderName] = None
+
+
+class DnaInsight(BaseModel):
+    category: str
+    kind: str
+    title: str
+    detail: str
+    confidence: str
+    evidenceIds: list[str]
+
+
+class DnaAnalyzeResponse(BaseModel):
+    summary: Optional[str] = None
+    insights: list[DnaInsight] = []

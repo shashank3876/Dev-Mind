@@ -6,8 +6,11 @@ from typing import Any, Optional
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
+    FieldCondition,
+    Filter,
     Fusion,
     FusionQuery,
+    MatchValue,
     Modifier,
     PointStruct,
     Prefetch,
@@ -134,6 +137,20 @@ class QdrantVectorStore(VectorStore):
             )
         await client.upsert(self._collection, points=points)
 
+    def _build_filter(self, filters: Optional[dict[str, Any]]) -> Optional[Filter]:
+        if not filters:
+            return None
+        must: list[FieldCondition] = []
+        for key, value in filters.items():
+            if value is None:
+                continue
+            must.append(
+                FieldCondition(key=str(key), match=MatchValue(value=value))
+            )
+        if not must:
+            return None
+        return Filter(must=must)
+
     async def search(
         self,
         vector: list[float],
@@ -141,9 +158,11 @@ class QdrantVectorStore(VectorStore):
         *,
         query_text: Optional[str] = None,
         mode: SearchMode = "hybrid",
+        filters: Optional[dict[str, Any]] = None,
     ) -> list[VectorSearchHit]:
         client = get_client()
         use_hybrid = mode == "hybrid" and bool(query_text and query_text.strip())
+        query_filter = self._build_filter(filters)
 
         if use_hybrid:
             prefetch_limit = max(top_k * 2, top_k)
@@ -154,14 +173,17 @@ class QdrantVectorStore(VectorStore):
                         query=vector,
                         using=DENSE_VECTOR_NAME,
                         limit=prefetch_limit,
+                        filter=query_filter,
                     ),
                     Prefetch(
                         query=text_to_sparse(query_text or ""),
                         using=SPARSE_VECTOR_NAME,
                         limit=prefetch_limit,
+                        filter=query_filter,
                     ),
                 ],
                 query=FusionQuery(fusion=Fusion.RRF),
+                query_filter=query_filter,
                 limit=top_k,
             )
         else:
@@ -169,6 +191,7 @@ class QdrantVectorStore(VectorStore):
                 self._collection,
                 query=vector,
                 using=DENSE_VECTOR_NAME,
+                query_filter=query_filter,
                 limit=top_k,
             )
 

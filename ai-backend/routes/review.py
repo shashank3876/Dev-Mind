@@ -1,7 +1,8 @@
 # /review route — accepts a public GitHub PR URL and streams an AI code review via SSE.
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from middleware.service_auth import require_service_secret
 from models.schemas import ReviewAskRequest, ReviewRequest
 from services import github as gh_service
 from services.llm import DEFAULT_PROVIDER, get_provider
@@ -16,7 +17,7 @@ from services.sse import format_sse
 router = APIRouter()
 
 
-@router.post("/review")
+@router.post("/review", dependencies=[Depends(require_service_secret)])
 async def review_pr(req: ReviewRequest):
     try:
         repo, pr_number, diff_url = gh_service.parse_pr_url(req.pr_url)
@@ -46,7 +47,7 @@ async def review_pr(req: ReviewRequest):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@router.post("/review/ask")
+@router.post("/review/ask", dependencies=[Depends(require_service_secret)])
 async def review_ask(req: ReviewAskRequest):
     question = req.question.strip()
     review = req.review.strip()

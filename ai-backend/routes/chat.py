@@ -2,8 +2,9 @@
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from middleware.service_auth import require_service_secret
 from models.schemas import ChatRequest, ClearChatRequest
 from services import memory, rag
 from services.llm import DEFAULT_PROVIDER, get_provider, list_providers
@@ -30,7 +31,7 @@ async def providers():
     return {"providers": list_providers(), "default": DEFAULT_PROVIDER}
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(require_service_secret)])
 async def chat(req: ChatRequest):
     provider_name = req.provider.value if req.provider else DEFAULT_PROVIDER
     llm = get_provider(provider_name)
@@ -49,6 +50,26 @@ async def chat(req: ChatRequest):
         rag_results = await rag.search(req.message)
     except Exception as e:
         logger.warning("RAG search failed, continuing without context: %s", e)
+
+    # Merge a small per-user Engineering DNA retrieval (isolated by user_id).
+    if req.user_id and req.user_id != "anonymous":
+        try:
+            dna_hits = await rag.search(
+                req.message,
+                top_k=2,
+                filters={
+                    "user_id": req.user_id,
+                    "source": "engineering_dna",
+                },
+            )
+            seen_texts = {hit.get("text") for hit in rag_results}
+            for hit in dna_hits:
+                text = hit.get("text")
+                if text and text not in seen_texts:
+                    rag_results.append(hit)
+                    seen_texts.add(text)
+        except Exception as e:
+            logger.warning("DNA RAG search failed, continuing: %s", e)
 
     if rag_results:
         context = "\n---\n".join(hit["text"] for hit in rag_results if hit.get("text"))
@@ -83,7 +104,7 @@ async def chat(req: ChatRequest):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@router.post("/chat/clear")
+@router.post("/chat/clear", dependencies=[Depends(require_service_secret)])
 async def clear_chat(req: ClearChatRequest):
     deleted = memory.clear_history(req.user_id)
     return {"ok": True, "deleted": deleted}

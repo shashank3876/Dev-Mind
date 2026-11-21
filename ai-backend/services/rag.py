@@ -61,6 +61,7 @@ async def search(
     top_k: int = 5,
     *,
     mode: Optional[str] = None,
+    filters: Optional[dict] = None,
 ) -> list[VectorSearchHit]:
     embedder = get_embedding_provider()
     store = get_vector_store()
@@ -75,4 +76,5 @@ async def search(
         top_k=top_k,
         query_text=query,
         mode=search_mode,
+        filters=filters,
     )

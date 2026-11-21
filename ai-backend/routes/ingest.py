@@ -1,12 +1,13 @@
 # /ingest route — indexes text chunks into Qdrant for RAG retrieval.
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from middleware.service_auth import require_ingest_secret
 from models.schemas import IngestRequest, IngestResponse
 from services import rag
 
 router = APIRouter()
 
 
-@router.post("/ingest", response_model=IngestResponse)
+@router.post("/ingest", response_model=IngestResponse, dependencies=[Depends(require_ingest_secret)])
 async def ingest(req: IngestRequest):
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text is required")

@@ -9,6 +9,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -67,6 +68,49 @@ async def with_retries(label: str, coro_factory, attempts: int = IN_PROCESS_ATTE
     raise last_err  # type: ignore[misc]
 
 
+async def notify_api_server_activity(job: dict[str, Any], review: str) -> None:
+    """Best-effort link of webhook PR review to a DevMind user by GitHub login."""
+    secret = os.environ.get("INTERNAL_API_SECRET", "").strip()
+    api_base = (
+        os.environ.get("API_SERVER_URL")
+        or os.environ.get("VITE_API_PROXY_TARGET")
+        or "http://localhost:3001"
+    ).rstrip("/")
+    if not secret:
+        logger.debug("INTERNAL_API_SECRET unset; skipping activity link")
+        return
+
+    author = (job.get("author") or "").strip()
+    if not author:
+        return
+
+    payload = {
+        "githubLogin": author,
+        "repo": job.get("repo"),
+        "prNumber": job.get("pr_number"),
+        "sha": job.get("sha"),
+        "branch": job.get("branch"),
+        "review": review,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.post(
+                f"{api_base}/api/internal/webhook-pr-activity",
+                json=payload,
+                headers={"X-Internal-Secret": secret},
+            )
+        if res.status_code >= 400:
+            logger.warning(
+                "activity link failed status=%s body=%s",
+                res.status_code,
+                res.text[:200],
+            )
+        else:
+            logger.info("activity link result=%s", res.text[:200])
+    except Exception as e:
+        logger.warning("activity link request failed: %s", e)
+
+
 async def process_job(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     job = normalize_job(job)
     outcome, claimed = store.claim(job)
@@ -98,6 +142,7 @@ async def process_job(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         job["max_attempts"],
     )
 
+    review = ""
     try:
         diff = await with_retries("fetch_diff", lambda: gh_service.fetch_diff(diff_url))
         messages = build_review_messages(diff)
@@ -133,6 +178,7 @@ async def process_job(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
     store.mark(job, STATUS_SUCCEEDED)
     logger.info("posted review to PR #%s job=%s", pr_number, job["id"])
+    await notify_api_server_activity(job, review)
     return STATUS_SUCCEEDED, job
 
 

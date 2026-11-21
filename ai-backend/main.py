@@ -1,16 +1,19 @@
 # FastAPI entry point for DevMind ai-backend — mounts chat, ingest, and health routes.
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(_REPO_ROOT / ".env")
 load_dotenv()
 
 from services.logging_config import setup_logging
 from services.memory import init_db
 from services.secrets import load_secrets
-from routes import chat, health, ingest, review
+from routes import chat, dna, health, ingest, review
 
 logger = setup_logging("devmind-api")
 load_secrets()
@@ -42,3 +45,4 @@ app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(ingest.router)
 app.include_router(review.router)
+app.include_router(dna.router)

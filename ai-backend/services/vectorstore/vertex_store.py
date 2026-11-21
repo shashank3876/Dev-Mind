@@ -60,9 +60,11 @@ class VertexVectorStore(VectorStore):
         *,
         query_text: Optional[str] = None,
         mode: SearchMode = "hybrid",
+        filters: Optional[dict[str, Any]] = None,
     ) -> list[VectorSearchHit]:
         # Vertex Matching Engine has no sparse/BM25 path; always dense.
-        _ = query_text, mode
+        # Payload filters are Qdrant-only; Vertex ignores filters.
+        _ = query_text, mode, filters
         response = self._endpoint.find_neighbors(
             deployed_index_id=self._deployed_index_id,
             queries=[vector],

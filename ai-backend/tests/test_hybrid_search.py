@@ -65,6 +65,32 @@ async def test_qdrant_vector_mode_skips_sparse():
 
 
 @pytest.mark.asyncio
+async def test_qdrant_search_passes_user_filter():
+    store = QdrantVectorStore(embedding_provider="local")
+    mock_client = MagicMock()
+    mock_results = MagicMock()
+    mock_results.points = []
+    mock_client.query_points = AsyncMock(return_value=mock_results)
+
+    with patch(
+        "services.vectorstore.qdrant_store.get_client", return_value=mock_client
+    ):
+        await store.search(
+            [0.1],
+            top_k=2,
+            query_text="engineering profile",
+            mode="vector",
+            filters={"user_id": "user-123", "source": "engineering_dna"},
+        )
+
+    kwargs = mock_client.query_points.await_args.kwargs
+    qf = kwargs["query_filter"]
+    assert qf is not None
+    keys = {cond.key for cond in qf.must}
+    assert keys == {"user_id", "source"}
+
+
+@pytest.mark.asyncio
 async def test_rag_search_passes_mode_and_query_text(monkeypatch):
     monkeypatch.setenv("RAG_SEARCH_MODE", "vector")
 
