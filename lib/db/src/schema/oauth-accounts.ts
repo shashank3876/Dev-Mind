@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uniqueIndex, uuid, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const oauthAccountsTable = pgTable(
@@ -10,6 +10,10 @@ export const oauthAccountsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     providerUserId: text("provider_user_id").notNull(),
+    providerLogin: text("provider_login"),
+    accessTokenEncrypted: text("access_token_encrypted"),
+    tokenScopes: text("token_scopes"),
+    tokenUpdatedAt: timestamp("token_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -19,6 +23,7 @@ export const oauthAccountsTable = pgTable(
       table.provider,
       table.providerUserId,
     ),
+    index("oauth_provider_login_idx").on(table.provider, table.providerLogin),
   ],
 );
 

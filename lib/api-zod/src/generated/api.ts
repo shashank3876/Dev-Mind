@@ -26,7 +26,8 @@ export const GetAuthMeResponse = zod.object({
   "id": zod.string(),
   "email": zod.string(),
   "name": zod.string().nullable(),
-  "avatarUrl": zod.string().nullable()
+  "avatarUrl": zod.string().nullable(),
+  "githubLogin": zod.string().nullable()
 }),zod.null()])
 })
 

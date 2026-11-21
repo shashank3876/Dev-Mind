@@ -16,7 +16,7 @@ Most portfolio chat apps stop at a prompt box. I wanted to demonstrate how real 
 - **Event-driven PR pipeline** — GitHub webhook → Redis/PubSub queue → background worker → GitHub comment
 - **Hybrid RAG with source citations** — Qdrant dense + BM25 sparse search fused with RRF; users can inspect retrieved chunks
 - **Multi-provider LLM routing** — Claude, Gemini, OpenAI, and Vertex AI via a pluggable provider interface
-- **Product features** — OAuth (Google/GitHub), conversation history, usage quotas, Razorpay billing
+- **Product features** — OAuth (Google/GitHub), conversation history, GitHub activity timeline, usage quotas, Razorpay billing
 - **GCP deployment** — Cloud Run services with Secret Manager, structured logging, and Cloud Build CI
 
 ## Screenshots
@@ -52,14 +52,18 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flows, failure modes, and 
 
 ### How it works
 
-1. **Chat flow** — The frontend sends messages to the AI backend. The backend loads recent history from SQLite, optionally retrieves context from Qdrant, and streams tokens from the selected LLM provider.
-2. **PR review flow** — GitHub sends `pull_request` or `push` events to the Go gateway. The gateway verifies the webhook signature, enqueues a job in Redis, and the Python worker picks it up, fetches the PR diff, generates a review, and posts it as a GitHub comment.
+1. **Chat flow** — The frontend sends messages through the Express api-server (auth + Postgres history), which proxies SSE to the AI backend. RAG context comes from Qdrant when available.
+2. **PR review flow** — GitHub sends `pull_request` events to the Go gateway. The gateway verifies the webhook signature, enqueues a job in Redis, and the Python worker picks it up, fetches the PR diff, generates a review, and posts it as a GitHub comment. Matching OAuth users also get the review on their Activity timeline.
+3. **Activity** — After GitHub OAuth login, `/activity` syncs the user’s **public** push and pull-request events via the GitHub Events API and shows linked webhook PR reviews.
+4. **Developer DNA** — `/dna` builds an evidence-backed engineering profile from public pushes/PRs, public PR diffs, and stored DevMind reviews (confidence + evidence links; no invented scores). Webhook PR activity marks the profile stale and triggers an async rebuild.
 
 ## Features
 
 - **Streaming chat** — Real-time responses over Server-Sent Events (SSE) with support for Claude, Gemini, and OpenAI
 - **Hybrid RAG context** — Ingest documents into Qdrant; retrieve with dense + BM25 RRF (or vector-only baseline via `RAG_SEARCH_MODE`)
-- **Conversation memory** — Per-user chat history stored in SQLite
+- **Conversation memory** — Per-user chat history stored in Postgres (via Express api-server)
+- **GitHub activity** — Public push/PR timeline + LLM push summaries after GitHub OAuth; webhook PR reviews linked by GitHub login
+- **Developer DNA** — Evidence-backed engineering profile with confidence levels and PR/commit links; updates when new webhook PRs arrive
 - **Automated PR reviews** — GitHub webhooks trigger background workers that fetch diffs, run LLM reviews, and post comments
 - **Multi-provider LLM routing** — Switch providers via environment config or per-request selection
 
@@ -288,6 +292,7 @@ PORT=5173 BASE_PATH=/ VITE_API_URL=http://localhost:8001 pnpm dev
 ```bash
 curl -N -X POST http://localhost:8001/chat \
   -H "Content-Type: application/json" \
+  -H "X-DevMind-Secret: $AI_BACKEND_SECRET" \
   -d '{"message": "Explain React Server Components", "user_id": "user-1", "provider": "claude"}'
 ```
 
@@ -296,6 +301,7 @@ curl -N -X POST http://localhost:8001/chat \
 ```bash
 curl -X POST http://localhost:8001/ingest \
   -H "Content-Type: application/json" \
+  -H "X-Ingest-Key: $INGEST_API_KEY" \
   -d '{"text": "Your documentation or code context here", "metadata": {"source": "readme"}}'
 ```
 
@@ -306,7 +312,7 @@ curl -X POST http://localhost:8001/ingest \
 | `GET` | `/health` | Health check |
 | `POST` | `/webhook/github` | GitHub webhook endpoint (signature verified) |
 
-Configure your GitHub repository webhook to point at `https://<your-host>/webhook/github` with events `pull_request` and `push`.
+Configure your GitHub repository webhook to point at `https://<your-host>/webhook/github` with the `pull_request` event (`opened`, `reopened`, `synchronize`). Personal push history on `/activity` comes from the GitHub Events API after OAuth — not from webhook `push` events.
 
 ## Development
 

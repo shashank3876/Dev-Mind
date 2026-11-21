@@ -121,18 +121,16 @@ export function usePrReviews() {
       setIsStreaming(true);
 
       try {
-        const response = isAuthenticated
-          ? await fetch("/api/pr-reviews", {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ prUrl: trimmed }),
-            })
-          : await fetch(`${import.meta.env.VITE_API_URL || ""}/review`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pr_url: trimmed }),
-            });
+        if (!isAuthenticated) {
+          throw new Error("Sign in to run a PR review.");
+        }
+
+        const response = await fetch("/api/pr-reviews", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prUrl: trimmed }),
+        });
 
         if (!response.ok) {
           const data = await response.json().catch(() => null);

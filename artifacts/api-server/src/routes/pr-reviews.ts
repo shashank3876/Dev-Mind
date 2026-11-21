@@ -11,13 +11,9 @@ import {
   listPrReviews,
   savePrReviewBody,
 } from "../services/pr-reviews";
+import { aiBackendHeaders, getAiBackendUrl } from "../lib/ai-backend";
 
 const router: IRouter = Router();
-
-function getAiBackendUrl(): string {
-  const url = process.env.AI_BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8001";
-  return url.replace(/\/+$/, "");
-}
 
 function parsePrUrl(prUrl: string): { repo: string; prNumber: number } {
   const match = prUrl.trim().match(
@@ -154,7 +150,7 @@ router.post("/pr-reviews", requireAuth, async (req, res) => {
   try {
     upstream = await fetch(`${getAiBackendUrl()}/review`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: aiBackendHeaders(),
       body: JSON.stringify({ pr_url: prUrl }),
     });
   } catch (err) {
@@ -245,7 +241,7 @@ router.post("/pr-reviews/:id/ask", requireAuth, async (req, res) => {
   try {
     upstream = await fetch(`${getAiBackendUrl()}/review/ask`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: aiBackendHeaders(),
       body: JSON.stringify({
         question: message,
         review: saved.review,

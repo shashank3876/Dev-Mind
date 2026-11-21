@@ -118,7 +118,7 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  const data = GetAuthMeResponse.parse({ user: toAuthUser(user) });
+  const data = GetAuthMeResponse.parse({ user: await toAuthUser(user) });
   res.json(data);
 });
 

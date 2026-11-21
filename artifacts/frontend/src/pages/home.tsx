@@ -97,7 +97,11 @@ export default function Home() {
       )}
       <div className="flex flex-col flex-1 min-w-0 relative">
       <AppHeader
-        navLinks={[{ href: "/review", label: "Review a PR" }]}
+        navLinks={[
+          { href: "/activity", label: "Activity" },
+          { href: "/dna", label: "DNA" },
+          { href: "/review", label: "Review a PR" },
+        ]}
         extra={
           isAuthenticated && usageLabel ? (
             <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-secondary/60 text-muted-foreground text-[10px] font-mono border border-border/50 truncate max-w-[200px]">

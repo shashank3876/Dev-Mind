@@ -2,11 +2,18 @@ import crypto from "node:crypto";
 
 export type OAuthProvider = "google" | "github";
 
+export const GITHUB_OAUTH_SCOPES = "read:user user:email";
+
 export interface OAuthProfile {
   providerUserId: string;
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  /** GitHub login / username when provider is github */
+  providerLogin?: string | null;
+  /** Raw OAuth access token — encrypted before persistence */
+  accessToken?: string | null;
+  tokenScopes?: string | null;
 }
 
 export function createOAuthState(): string {
@@ -103,7 +110,7 @@ export function getGitHubAuthUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: "read:user user:email",
+    scope: GITHUB_OAUTH_SCOPES,
     state,
   });
   return `https://github.com/login/oauth/authorize?${params}`;
@@ -132,7 +139,10 @@ export async function exchangeGitHubCode(
     throw new Error("Failed to exchange GitHub authorization code.");
   }
 
-  const tokenData = (await tokenRes.json()) as { access_token?: string };
+  const tokenData = (await tokenRes.json()) as {
+    access_token?: string;
+    scope?: string;
+  };
   if (!tokenData.access_token) {
     throw new Error("GitHub token response missing access_token.");
   }
@@ -185,6 +195,9 @@ export async function exchangeGitHubCode(
     email,
     name: user.name ?? user.login ?? null,
     avatarUrl: user.avatar_url ?? null,
+    providerLogin: user.login ?? null,
+    accessToken: tokenData.access_token,
+    tokenScopes: tokenData.scope ?? GITHUB_OAUTH_SCOPES,
   };
 }
 

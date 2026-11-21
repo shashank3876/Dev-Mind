@@ -99,11 +99,18 @@ export default function ReviewPage() {
         />
       )}
       <div className="flex flex-col flex-1 min-w-0 relative">
-        <AppHeader badge="PR Review" navLinks={[{ href: "/", label: "Chat" }]} />
+        <AppHeader
+          badge="PR Review"
+          navLinks={[
+            { href: "/", label: "Chat" },
+            { href: "/activity", label: "Activity" },
+            { href: "/dna", label: "DNA" },
+          ]}
+        />
 
         {!isAuthLoading && !isAuthenticated && (
           <div className="flex-none px-6 py-3 bg-primary/5 border-b border-primary/10 text-center text-sm text-muted-foreground">
-            <span className="text-primary font-medium">Sign in</span> to save PR reviews and ask follow-up questions about them.
+            <span className="text-primary font-medium">Sign in</span> to run PR reviews, save history, and ask follow-up questions.
           </div>
         )}
 
@@ -293,7 +300,7 @@ export default function ReviewPage() {
             </div>
           </form>
           <p className="text-center text-[11px] text-muted-foreground font-medium tracking-wide">
-            Public repos only · Reviews stay in DevMind — nothing is posted to GitHub
+            Sign in required · Public repos only · Manual reviews stay in DevMind
           </p>
         </div>
       </div>

@@ -154,11 +154,15 @@ components:
         avatarUrl:
           type: string
           nullable: true
+        githubLogin:
+          type: string
+          nullable: true
       required:
         - id
         - email
         - name
         - avatarUrl
+        - githubLogin
     AuthMeResponse:
       type: object
       properties:

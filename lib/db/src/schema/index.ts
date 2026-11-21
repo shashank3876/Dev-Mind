@@ -8,3 +8,6 @@ export * from "./conversations";
 export * from "./conversation-messages";
 export * from "./pr-reviews";
 export * from "./pr-review-messages";
+export * from "./github-activity-events";
+export * from "./engineering-profiles";
+export * from "./engineering-insights";

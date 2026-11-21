@@ -15,13 +15,9 @@ import {
 } from "../services/conversations";
 import { GetChatUsageResponse } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { aiBackendHeaders, getAiBackendUrl } from "../lib/ai-backend";
 
 const router: IRouter = Router();
-
-function getAiBackendUrl(): string {
-  const url = process.env.AI_BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8001";
-  return url.replace(/\/+$/, "");
-}
 
 function consumeSseTokens(chunk: string, buffer: string): { tokens: string[]; buffer: string } {
   const combined = buffer + chunk;
@@ -114,7 +110,7 @@ router.post("/chat", requireAuth, async (req, res) => {
   try {
     upstream = await fetch(`${getAiBackendUrl()}/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: aiBackendHeaders(),
       body: JSON.stringify(payload),
     });
   } catch (err) {

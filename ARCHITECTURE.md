@@ -14,7 +14,7 @@ flowchart TB
     FastAPI[FastAPI_ai_backend]
   end
   subgraph data [Data]
-    SQLite[(SQLite)]
+    Postgres[(Postgres)]
     Qdrant[(Qdrant)]
     Redis[(Redis_PubSub)]
   end
@@ -26,11 +26,12 @@ flowchart TB
 
   React --> Express
   Express --> FastAPI
-  Express --> SQLite
+  Express --> Postgres
   FastAPI --> Qdrant
   GitHub --> Gateway --> Redis --> Worker
   Worker --> GitHub
   Worker --> FastAPI
+  Worker --> Express
 ```
 
 ## Service boundaries
@@ -52,7 +53,7 @@ sequenceDiagram
   participant UI as React
   participant API as Express
   participant AI as FastAPI
-  participant DB as SQLite
+  participant DB as Postgres
   participant VS as Qdrant
 
   UI->>API: POST /api/chat (SSE)
@@ -140,20 +141,20 @@ Key details:
 
 | Store | Used for | Tradeoff |
 |-------|----------|----------|
-| **SQLite** (via Drizzle) | Users, sessions, conversations, billing | Simple for portfolio/single-instance; would migrate to Postgres for multi-instance |
-| **Qdrant** | Hybrid dense + BM25 sparse RAG | Self-hosted or cloud; Vertex Vector Search available as dense-only alternative |
+| **Postgres** (via Drizzle) | Users, sessions, conversations, billing, GitHub activity, engineering DNA profiles/insights | Shared across Cloud Run instances; `connect-pg-simple` sessions |
+| **Qdrant** | Hybrid dense + BM25 sparse RAG; DNA chunks tagged with `user_id` + `source=engineering_dna` | Self-hosted or cloud; Vertex Vector Search available as dense-only alternative |
 | **Redis / PubSub** | PR review job queue | Redis for local dev; Google Pub/Sub in production on GCP |
+| **Worker SQLite (`jobs.db`)** | Webhook job status / dedup ops | Operator-facing; product activity lives in Postgres |
 
 ## Scale path (10k users)
 
 What would change at higher scale, without rewriting the architecture:
 
-1. **SQLite → Postgres** — Required once api-server runs multiple Cloud Run instances (session/conversation consistency).
+1. **Postgres tuning** — Connection pooling (PgBouncer), read replicas once chat/activity volume grows.
 2. **Rate limiting** — Per-user token bucket on `/api/chat` and `/review` endpoints.
 3. **Worker pool** — Horizontal scaling of Python workers with Pub/Sub consumer groups.
 4. **Embedding cache** — Cache query embeddings in Redis to avoid re-computing identical searches.
-5. **Connection pooling** — PgBouncer for Postgres, Redis connection pool tuning.
-6. **CDN for frontend** — Static assets served from Cloud CDN / Cloud Storage.
+5. **CDN for frontend** — Static assets served from Cloud CDN / Cloud Storage.
 
 ## Deployment (GCP)
 
@@ -171,7 +172,9 @@ Secrets are loaded from **Secret Manager** (`USE_GCP_SECRETS=true`). Structured 
 | Decision | Chosen | Alternative | Rationale |
 |----------|--------|-------------|-----------|
 | Monorepo | pnpm + Go module + Python venv | Separate repos | Easier to demo as one project; shared OpenAPI spec |
-| Chat persistence | Express api-server (SQLite) | Direct FastAPI SQLite | Keeps auth/quota/billing in one layer |
+| Chat persistence | Express api-server (Postgres) | Direct FastAPI SQLite | Keeps auth/quota/billing in one layer |
+| Push history | GitHub Events API after OAuth | Webhook `push` events | Public activity without repo install; webhooks stay `pull_request`-only |
+| Engineering DNA | Public Events + public PR diffs + stored DevMind reviews | Broader OAuth scopes | Keeps `read:user user:email`; insights require evidence IDs; no invented scores |
 | RAG store | Qdrant hybrid (dense+BM25 RRF) | Dense-only / Pinecone / pgvector | Lexical + semantic recall; `RAG_SEARCH_MODE=vector` keeps an A/B baseline |
 | LLM abstraction | Provider interface in Python | LiteLLM | Lightweight; only 4 providers needed |
 | PR output format | Structured markdown | JSON schema output | Simpler to render; severity parsed on frontend |
@@ -185,4 +188,6 @@ Secrets are loaded from **Secret Manager** (`USE_GCP_SECRETS=true`). Structured 
 - Worker jobs: `ai-backend/worker.py`, `ai-backend/services/jobs.py`, `ai-backend/services/job_store.py`
 - Review prompts: `ai-backend/services/review_prompt.py`
 - Chat proxy: `artifacts/api-server/src/routes/chat.ts`
-- Frontend hooks: `artifacts/frontend/src/hooks/use-chat.ts`
+- Activity API: `artifacts/api-server/src/routes/activity.ts`
+- Engineering DNA: `artifacts/api-server/src/routes/dna.ts`, `services/dna.ts`, `ai-backend/routes/dna.py`
+- Frontend hooks: `artifacts/frontend/src/hooks/use-chat.ts`, `use-activity.ts`, `use-dna.ts`
